@@ -2,8 +2,8 @@ version: '3.8'
 
 services:
   nextjs-app:
-    image: ai-camera-frontend
-    container_name: ai-camera-frontend
+    image: ocr-frontend
+    container_name: ocr-frontend
     build:
       context: .
       dockerfile: src/Dockerfile 
