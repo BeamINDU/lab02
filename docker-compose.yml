@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  nextjs-app:
+    image: ai-camera-frontend
+    container_name: ai-camera-frontend
+    build:
+      context: .
+      dockerfile: src/Dockerfile 
+    ports:
+      - "3000:3000" 
+    volumes:
+      - ./src:/app 
+    environment:
+      - NODE_ENV=development
+    command: npm run dev 
+
