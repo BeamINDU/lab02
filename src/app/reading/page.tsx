@@ -3,10 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useState, useRef } from "react";
 import { ChartBarIcon, LanguagesIcon, HistoryIcon, FileTextIcon, Settings2Icon } from 'lucide-react';
-import CloseBTN from "../components/CloseBTN";
-import LanguageDropdown from "../components/LanguageDropdown";
-import CustomAlert from '../components/CustomAlert';
-import SuccessMessage from '../components/SuccessMessage';
+import Image from "next/image";
+import CloseBTN from "../components/_temp/CloseBTN";
+import LanguageDropdown from "../components/_temp/LanguageDropdown";
+import CustomAlert from '../components/_temp/CustomAlert';
+import SuccessMessage from '../components/_temp/SuccessMessage';
 
 interface FileData {
   No: number;
@@ -15,12 +16,17 @@ interface FileData {
 }
 
 export default function ReadingPage() {
-  const [isAddNewCameraBTNOpen, setAddNewCameraBTNOpen] = useState(false);
-  const [files, setFiles] = useState<FileData[]>([]);
-  const [selectedPreview, setSelectedPreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [modalPreview, setModalPreview] = useState<FileData | null>(null);
   const router = useRouter();
+
+  const [isAddNewSourceFileBTNOpen, setAddNewSourceFileBTNOpen] = useState(false);
+  const [files, setFiles] = useState<FileData[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [selectedPreview, setSelectedPreview] = useState<string | null>(null);
+  const [modalPreview, setModalPreview] = useState<FileData | null>(null);
+  
+  const [isLoading, setIsLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   const [showAlert, setShowAlert] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -41,7 +47,7 @@ export default function ReadingPage() {
     if (modalPreview) {
       setFiles([...files, modalPreview]);
       setModalPreview(null);
-      setAddNewCameraBTNOpen(false);
+      setAddNewSourceFileBTNOpen(false);
       
       // Reset file input after saving
       if (fileInputRef.current) {
@@ -50,6 +56,7 @@ export default function ReadingPage() {
   
       // Show success message
       setShowSuccess(true);
+      
       // Auto hide after 2 seconds
       setTimeout(() => {
         setShowSuccess(false);
@@ -62,13 +69,14 @@ export default function ReadingPage() {
       URL.revokeObjectURL(modalPreview.preview);
     }
     setModalPreview(null);
-    setAddNewCameraBTNOpen(false);
+    setAddNewSourceFileBTNOpen(false);
     
     // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
+
   const handleCancelClick = () => {
     if (modalPreview) {
       setShowAlert(true);
@@ -106,27 +114,43 @@ export default function ReadingPage() {
     }
   };
 
+  const handleStartProcess = () => {
+    setIsLoading(true);
+    let currentProgress = 0;
+
+    const interval = setInterval(() => {
+      currentProgress += 10;
+      setProgress(currentProgress);
+
+      if (currentProgress >= 100) {
+        clearInterval(interval);
+        setIsLoading(false);
+        router.push("/process");
+      }
+    }, 100); // เพิ่ม progress ทุก 200ms
+  };
+
   return (
     <div className="w- text-black grid grid-cols-2 gap-10 p-10">
       <div>
         <input 
+          // multiple
           type="file"
+          className="hidden"
           ref={fileInputRef}
           onChange={handleFileSelect}
-          className="hidden"
-          // multiple
           accept="image/*"
         />
         
         <div>
           <button
             className="text-white font-semibold px-4 py-1 rounded-lg bg-[#0369A1] hover:bg-[#9c9a9a] active:scale-95 transition transform duration-150 mr-8"
-            onClick={() => {setAddNewCameraBTNOpen(true)}}
+            onClick={() => {setAddNewSourceFileBTNOpen(true)}}
           >
             Add +
           </button>
 
-          {isAddNewCameraBTNOpen && (
+          {isAddNewSourceFileBTNOpen && (
             <div className="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-white shadow-lg max-w-[850px] min-h-[650px] w-full">
 
@@ -135,7 +159,7 @@ export default function ReadingPage() {
                     MAPPING WITH TEMPLATES
                   </div>
                   <div className="content-center mr-1">
-                    <CloseBTN onClick={() => setAddNewCameraBTNOpen(false)} />
+                    <CloseBTN onClick={() => setAddNewSourceFileBTNOpen(false)} />
                   </div>
                 </div>
                 
@@ -234,10 +258,38 @@ export default function ReadingPage() {
 
           <button
             className="text-white font-semibold px-4 py-1 rounded-lg bg-[#0369A1] hover:bg-[#9c9a9a] active:scale-95 transition transform duration-150 mr-0"
-            onClick={() => {setAddNewCameraBTNOpen(true)}}
+            onClick={handleStartProcess}
           >
             Start Process
           </button>  
+
+          {isLoading && (
+            <div className="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg shadow-lg p-6 text-center w-[400px]">
+                <div className="flex flex-col items-center">
+                  {/* Loading Text */}
+                  <div className="text-xl font-bold mb-2">Processing, please wait...</div>
+                  {/* Image Spinner */}
+                  <Image
+                    src="/images/spinner.gif"
+                    alt=""
+                    width={70}
+                    height={70}
+                    className="mb-4 animate-spin"
+                  />
+                </div>
+                {/* Progress Bar */}
+                <div className="relative w-full bg-gray-200 rounded-full h-4">
+                  <div
+                    className="bg-blue-500 h-4 rounded-full"
+                    style={{ width: `${progress}%` }}
+                  ></div>
+                </div>
+                <div className="text-sm text-gray-500 mt-2">{progress}%</div>
+              </div>
+            </div>
+          )}
+
         </div> 
 
         <div className="text-[36px] font-bold mt-5 mb-2">
@@ -255,8 +307,9 @@ export default function ReadingPage() {
             <div className="text-gray-400">No image selected</div>
           )}
         </div>
-
+      
       </div>
+      
       <CustomAlert 
         isOpen={showAlert}
         onClose={() => setShowAlert(false)}
@@ -265,7 +318,10 @@ export default function ReadingPage() {
           setShowAlert(false);
         }}
       />
+
       <SuccessMessage isOpen={showSuccess} />
+
+
     </div>
   );
 }

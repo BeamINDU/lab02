@@ -2,8 +2,8 @@ version: '3.8'
 
 services:
   nextjs-app:
-    image: ocr-frontend
-    container_name: ocr-frontend
+    image: takumi/ocr-frontend
+    container_name: takumi/ocr-frontend
     build:
       context: .
       dockerfile: src/Dockerfile 

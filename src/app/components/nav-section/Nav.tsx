@@ -1,19 +1,19 @@
 "use client";
-import {
-  UserIcon,
-  Cog8ToothIcon,
-  ArrowRightStartOnRectangleIcon,
-} from "@heroicons/react/24/solid";
+
+import { UserIcon, Cog8ToothIcon, ArrowRightStartOnRectangleIcon } from "@heroicons/react/24/solid";
 import { useRouter } from "next/navigation";
 
 const Navbar = () => {
   const router = useRouter();
+
   const navigateToSignIn = () => {
     router.push("/login");
   };
+
   const navigateToDashboard = () => {
     router.push("/dashboard");
   };
+
   return (
     <>
       <nav
@@ -32,7 +32,7 @@ const Navbar = () => {
                 const target = e.target as HTMLImageElement; // ระบุชนิดของ e.target
                 target.style.cursor = "url('/hand-icon.png'), pointer";
               }}
-              style={{ width: "450px", height: "60px" }}
+              style={{ width: "270px", height: "60px" }}
             />
           </div>
           <div className="container flex justify-end p-5">

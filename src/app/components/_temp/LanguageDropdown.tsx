@@ -9,10 +9,10 @@ const LanguageDropdown = () => {
     'English',
     'Thai',
     'Japanese',
-    'Chinese',
-    'Korean',
-    'Vietnamese',
-    'Indonesian'
+    // 'Chinese',
+    // 'Korean',
+    // 'Vietnamese',
+    // 'Indonesian'
   ];
 
   const handleLanguageSelect = (language) => {
