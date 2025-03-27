@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { usePhotoEditor } from '../hooks/usePhotoEditor';
+import { usePhotoEditor } from '../../hooks/usePhotoEditor';
 
 export default function CustomPhotoEditor() {
   const [file, setFile] = useState<File | undefined>(undefined);

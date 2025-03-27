@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { useTable, useExpanded } from "react-table";
+import { useTable, useExpanded, Row, Column } from "react-table";
 
 interface HistoryItem {
   templateNo: number;
@@ -10,7 +10,7 @@ interface HistoryItem {
   targetSystem: string;
   inputLanguage: string;
   outputLanguage: string;
-  status: "Success" | "Error";
+  status: "Success" | "Error";  // Ensure this is not optional
   remark: string;
   runningTime: string;
   runningDate: string;
@@ -29,7 +29,7 @@ interface DocumentItem {
   saveToDatabase: boolean;
 }
 
-const HistoryPage = () => {
+export default function HistoryPage() {
   const [historyData] = useState<HistoryItem[]>([
     {
       templateNo: 1,
@@ -38,7 +38,7 @@ const HistoryPage = () => {
       targetSystem: "System 1",
       inputLanguage: "English",
       outputLanguage: "Thai",
-      status: "Success",
+      status: "Success", // Ensure status exists
       remark: "-",
       runningTime: "00:15:48",
       runningDate: "2024/11/01 10:00",
@@ -63,18 +63,18 @@ const HistoryPage = () => {
       targetSystem: "System 2",
       inputLanguage: "Japanese",
       outputLanguage: "English",
-      status: "Error",
+      status: "Error", // Ensure status exists
       remark: "Cannot connect to the system.",
       runningTime: "00:02:15",
       runningDate: "2024/10/30 14:00",
     },
   ]);
 
-  const columns = useMemo(
+  const columns: Column<HistoryItem>[] = useMemo(
     () => [
       {
         Header: "#",
-        id: "expander", // Column for expand button
+        id: "expander",
         Cell: ({ row }: any) => (
           <span {...row.getToggleRowExpandedProps()}>
             {row.isExpanded ? "▼" : "▶"}
@@ -103,7 +103,7 @@ const HistoryPage = () => {
       },
       {
         Header: "Status",
-        accessor: "status",
+        accessor: "status", // Ensure this is set and not undefined
         Cell: ({ value }: any) => (
           <span className={value === "Success" ? "text-green-500" : "text-red-500"}>
             {value}
@@ -122,6 +122,20 @@ const HistoryPage = () => {
         Header: "Running Date",
         accessor: "runningDate",
       },
+      {
+        Header: "Documents", // Add a custom column for documents
+        accessor: "documents", // This accesses the 'documents' property of the row
+        Cell: ({ value }: any) => (
+          <ul>
+            {value &&
+              value.map((doc: DocumentItem) => (
+                <li key={doc.documentNo}>
+                  {doc.documentName} - {doc.processStatus}
+                </li>
+              ))}
+          </ul>
+        ),
+      },
     ],
     []
   );
@@ -132,7 +146,6 @@ const HistoryPage = () => {
     headerGroups,
     rows,
     prepareRow,
-    state: { expanded },
   } = useTable(
     {
       columns,
@@ -153,39 +166,29 @@ const HistoryPage = () => {
       <div className="bg-white shadow-lg rounded-lg overflow-hidden">
         <table {...getTableProps()} className="w-full border-collapse">
           <thead className="bg-blue-200">
-            {headerGroups.map((headerGroup) => {
-              const { key, ...rest } = headerGroup.getHeaderGroupProps();
-              return (
-                <tr key={key} {...rest}>
-                  {headerGroup.headers.map((column) => {
-                    const { key: colKey, ...colRest } = column.getHeaderProps();
-                    return (
-                      <th key={colKey} {...colRest} className="p-3 text-left">
-                        {column.render("Header")}
-                      </th>
-                    );
-                  })}
-                </tr>
-              );
-            })}
+          {headerGroups?.map((headerGroup, index) => (
+            <tr {...headerGroup.getHeaderGroupProps()} key={index}>
+              {headerGroup.headers.map((column, columnIndex) => (
+                <th {...column.getHeaderProps()} className="p-3 text-left" key={columnIndex}>
+                  {column.render("Header")}
+                </th>
+              ))}
+            </tr>
+          ))}
           </thead>
           <tbody {...getTableBodyProps()}>
             {rows.map((row) => {
               prepareRow(row);
-              const { key: rowKey, ...rowRest } = row.getRowProps();
               return (
-                <React.Fragment key={rowKey}>
-                  <tr {...rowRest} className="border-b hover:bg-gray-100">
-                    {row.cells.map((cell) => {
-                      const { key: cellKey, ...cellRest } = cell.getCellProps();
-                      return (
-                        <td key={cellKey} {...cellRest} className="p-3">
-                          {cell.render("Cell")}
-                        </td>
-                      );
-                    })}
+                <React.Fragment key={row.getRowProps().key}>
+                  <tr {...row.getRowProps()} className="border-b hover:bg-gray-100">
+                    {row.cells.map((cell, index) => (
+                      <td {...cell.getCellProps()} className="p-3" key={index}>
+                        {cell.render("Cell")}
+                      </td>
+                    ))}
                   </tr>
-                  {row.isExpanded && row.original.documents && (
+                  {row.original.documents && (
                     <tr className="bg-gray-50">
                       <td colSpan={10} className="p-3">
                         <table className="w-full">
@@ -235,6 +238,4 @@ const HistoryPage = () => {
       </div>
     </div>
   );
-};
-
-export default HistoryPage;
+}

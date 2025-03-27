@@ -1,8 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  future: { webpack5: true },
+  webpack: config => {
+    config.resolve.alias.canvas = false;
+    config.resolve.alias.encoding = false;
+    return config;
+  },
 };
+
 module.exports = {
   eslint: {
     // Warning: This allows production builds to successfully complete even if

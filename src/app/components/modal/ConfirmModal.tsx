@@ -1,73 +1,49 @@
-import React from 'react';
+import React from "react";
 
-interface ConfirmModalProps {
+interface MessageModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
   title: string;
   message: string;
+  actions?: { label: string; onClick: () => void }[];
 }
 
-const ConfirmModal: React.FC<ConfirmModalProps> = ({ isOpen, onClose, onConfirm, title, message }) => {
+const MessageModal: React.FC<MessageModalProps> = ({
+  isOpen,
+  onClose,
+  title,
+  message,
+  actions = [],
+}) => {
   if (!isOpen) return null;
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 1000,
-      }}
+      className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50"
+      onClick={onClose}
     >
       <div
-        style={{
-          backgroundColor: 'white',
-          padding: '20px',
-          borderRadius: '8px',
-          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-          minWidth: '300px',
-        }}
+        className="bg-white p-6 rounded-lg w-96 shadow-md"
+        onClick={(e) => e.stopPropagation()}
       >
-        <h2>{title}</h2>
-        <p>{message}</p>
-        <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-          <button
-            onClick={onConfirm}
-            style={{
-              padding: '10px',
-              backgroundColor: '#28a745',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
-          >
-            Yes
-          </button>
-          <button
-            onClick={onClose}
-            style={{
-              padding: '10px',
-              backgroundColor: '#dc3545',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
-          >
-            No
-          </button>
+        <h3 className="text-black text-lg font-semibold mb-2">{title}</h3>
+        <p className="text-black mb-4">{message}</p>
+        <div className="flex justify-end gap-2">
+          {actions.map((action, index) => (
+            <button
+              key={index}
+              onClick={action.onClick}
+              className={`px-4 py-2 rounded-md text-white font-semibold text-sm ${
+                action.label === "NO" ? "bg-[#818893]" : "bg-[#0369A1]"
+              }`}
+            >
+              {action.label}
+            </button>
+          ))}
         </div>
       </div>
     </div>
   );
 };
 
-export default ConfirmModal;
+export default MessageModal;

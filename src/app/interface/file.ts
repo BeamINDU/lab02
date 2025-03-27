@@ -1,6 +1,8 @@
 
 export interface SourceFileData {
   no: number;
-  file?: File;
-  url: string
+  url: string;
+  fileName?: string;
+  fileType?: string;
+  fileSize?: number;
 }

@@ -4,12 +4,12 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import useToast from "../../hooks/useToast";
-import MappingTemplateModal from "../../components/modal/MappingTemplateModal";
-import ExportModal from "../../components/modal/ExportModal";
+import MappingTemplateModal from "../../reading/components/MappingTemplateModal";
+import ExportModal from "../../process/components/ExportModal";
 import ImageEditModal, { AdjustmentValues } from "../../components/modal/ImageEditModal";
-import FileTable from "../../reading2/components/SourceFileTable";
-import PreviewFile from "../../reading2/components/PreviewFile"; 
-import MessageModal from "../../components/modal/MessageModal";
+import FileTable from "../../reading/components/SourceFileTable";
+import PreviewFile from "../../reading/components/PreviewFile"; 
+import ConfirmModal from "../../components/modal/ConfirmModal";
 
 //------------------------------------------------------------------------------
 
@@ -230,16 +230,16 @@ export default function SettingTemplatePage() {
         onSave={handleSaveEdit}
       />
 
-      <ExportModal
+      {/* <ExportModal
         isOpen={isExportModalOpen}
         onClose={handleCloseExportModal}
         files={files}
         onSave={handleSaveExport}
         onExportTxt={handleExportTxt}
         onSendExternal={handleSendExternal}
-      />
+      /> */}
       
-      <MessageModal
+      <ConfirmModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         title="Delete File"

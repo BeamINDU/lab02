@@ -73,8 +73,8 @@ const ReportPage = () => {
 
   // Filter data based on search query
   const filteredData = useMemo(() => {
-    console.log("Search Query:", searchQuery);
-    console.log("Original Data:", data);
+    // console.log("Search Query:", searchQuery);
+    // console.log("Original Data:", data);
   
     return data.filter((item) =>
       [item.templateName, item.documentName, item.model]
