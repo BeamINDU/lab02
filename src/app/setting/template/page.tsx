@@ -4,11 +4,11 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import useToast from "../../hooks/useToast";
-import MappingTemplateModal from "../../reading/components/MappingTemplateModal";
+import MappingTemplateModal from "../../_temp/MappingTemplateModal";
 import ExportModal from "../../process/components/ExportModal";
 import ImageEditModal, { AdjustmentValues } from "../../components/modal/ImageEditModal";
-import FileTable from "../../reading/components/SourceFileTable";
-import PreviewFile from "../../reading/components/PreviewFile"; 
+import FileTable from "../../components/ocr/SourceFileTable";
+import PreviewFile from "../../components/ocr/PreviewFile"; 
 import ConfirmModal from "../../components/modal/ConfirmModal";
 
 //------------------------------------------------------------------------------

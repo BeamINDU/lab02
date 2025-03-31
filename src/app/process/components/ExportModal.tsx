@@ -10,7 +10,7 @@ interface OptionProps {
 interface ExportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  sourceFiles: OptionProps[];
+  optionsSourceFiles: OptionProps[];
   onSave: (selectedFiles: OptionProps[]) => void;
   onExportTxt: (selectedFiles: OptionProps[]) => void;
   onSendExternal: (selectedFiles: OptionProps[]) => void;
@@ -19,7 +19,7 @@ interface ExportModalProps {
 const ExportModal: React.FC<ExportModalProps> = ({
   isOpen,
   onClose,
-  sourceFiles,
+  optionsSourceFiles,
   onSave,
   onExportTxt,
   onSendExternal,
@@ -36,7 +36,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
   };
 
   const toggleSelectAll = (isSelected: boolean) => {
-    setSelectedFiles(isSelected ? sourceFiles : []);
+    setSelectedFiles(isSelected ? optionsSourceFiles : []);
   };
 
   const handleAction = (
@@ -92,12 +92,12 @@ const ExportModal: React.FC<ExportModalProps> = ({
               <label className="flex items-center mb-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={selectedFiles.length === sourceFiles.length}
+                  checked={selectedFiles.length === optionsSourceFiles.length}
                   onChange={(e) => toggleSelectAll(e.target.checked)}
                   className="hidden peer"
                 />
                 <div className="w-5 h-5 border-2 border-gray-400 rounded-md flex items-center justify-center peer-checked:bg-blue-600 peer-checked:border-blue-600 transition-all">
-                  {selectedFiles.length === sourceFiles.length && (
+                  {selectedFiles.length === optionsSourceFiles.length && (
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       className="h-4 w-4 text-white"
@@ -116,7 +116,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
               </label>
 
               <div className="border-t">
-                {sourceFiles?.map((item, index) => (
+                {optionsSourceFiles?.map((item, index) => (
                   <label key={index} className="flex items-center mt-2 cursor-pointer">
                     <input
                       type="checkbox"

@@ -39,7 +39,7 @@ export default function SourceFileTable({
             <tr
               key={index}
               className={`border-t transition ease-in-out duration-150 ${
-                selectedIndex === index ? "bg-blue-100" : index % 2 === 0 ? "bg-gray-50" : "bg-white"
+                selectedIndex === index ? "bg-gray-200" : index % 2 === 0 ? "bg-gray-50" : "bg-white"
               }`}
               onClick={() => handleRowClick(index)}
             >

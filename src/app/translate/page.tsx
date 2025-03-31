@@ -1,5 +1,7 @@
 "use client";
 
-export default function TranslatePage() {
-    return <>TranslatePage</>
+import TranslatePage from "./components/TranslatePage";
+
+export default function Page() {
+    return <TranslatePage/>
 }

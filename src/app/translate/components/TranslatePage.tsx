@@ -23,11 +23,12 @@ const optionsLanguage = [
   { label: 'Thai', value: 'tha' },
 ];
 
-export default function ReadingPage() {
+export default function TranslatePage() {
   const router = useRouter();
   const dispatch = useDispatch();
 
   const inputLanguage = useSelector((state: RootState) => state.files.input_language);
+  const outputLanguage = useSelector((state: RootState) => state.files.output_language);
   const files = useSelector((state: RootState) => state.files.files);
 
   const { toastSuccess, toastError } = useToast();
@@ -67,13 +68,18 @@ export default function ReadingPage() {
     }
 
     dispatch(setInputLanguage(inputLanguage));
-    dispatch(setOutputLanguage(inputLanguage));
+    dispatch(setOutputLanguage(outputLanguage));
     dispatch(setFiles(files));
-    router.push('/reading/process');
+    router.push('/translate/process');
   };
 
-  // Handlers for Add
-  const handleAdd = () => {
+  // Handlers for OCR
+  const handleOcr = () => {
+
+  };
+
+  // Handlers for Browse
+  const handleBrowse = () => {
     fileRef.current?.click();
   };
 
@@ -164,16 +170,21 @@ export default function ReadingPage() {
 
   return (
     <div className="flex flex-col h-[100%] p-4 bg-gray-100">
-      {/* Source Add Button & Input Language Selection */}
-      <div className="grid grid-cols-2 gap-4 h-full">
-        {/* Source Add Button */}
-        <div className="flex flex-col">
-          <div className="mb-4">
+      {/* Source Button && Language Selection & */}
+      <div className="grid grid-cols-3 gap-4 h-full">
+        <div className="flex flex-col col-span-1">
+          <div className="mb-4 flex space-x-2 w-full">
             <button
-              onClick={handleAdd}
+              onClick={handleBrowse}
               className="text-white bg-[#0369A1] hover:bg-blue-600 font-semibold px-4 py-2 rounded-md text-sm w-24"
             >
-              Add
+              BROWSE
+            </button>
+            <button
+              onClick={handleOcr}
+              className="text-white bg-[#0369A1] hover:bg-blue-600 font-semibold px-4 py-2 rounded-md text-sm w-24"
+            >
+              OCR
             </button>
             <input
               multiple
@@ -185,10 +196,9 @@ export default function ReadingPage() {
             />
           </div>
         </div>
-        {/* Input Language Selection */}
-        <div className="flex flex-col">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-2 w-4/5">
+        <div className="flex flex-col col-span-2">
+          <div className="flex items-center justify-between mb-4 w-full">
+            <div className="flex items-center space-x-2 w-full md:w-2/5">
               <label className="text-sm font-medium whitespace-nowrap" htmlFor="language-select">
                 Input Language Selection
               </label>
@@ -196,10 +206,7 @@ export default function ReadingPage() {
                 id="language-select"
                 className="px-4 py-2 border rounded-md w-full text-sm"
                 value={inputLanguage}
-                onChange={(e) => {
-                  dispatch(setInputLanguage(e.target.value));
-                  dispatch(setOutputLanguage(e.target.value));
-                }}
+                onChange={(e) => dispatch(setInputLanguage(e.target.value))}
               >
                 {optionsLanguage.map((lang, index) => (
                   <option key={index} value={lang.value}>
@@ -208,17 +215,33 @@ export default function ReadingPage() {
                 ))}
               </select>
             </div>
-
+            <div className="flex items-center space-x-2 w-full md:w-2/5">
+              <label className="text-sm font-medium whitespace-nowrap" htmlFor="language-select">
+                Output Language Selection
+              </label>
+              <select
+                id="language-select"
+                className="px-4 py-2 border rounded-md w-full text-sm"
+                value={outputLanguage}
+                onChange={(e) => dispatch(setOutputLanguage(e.target.value))}
+              >
+                {optionsLanguage.map((lang, index) => (
+                  <option key={index} value={lang.value}>
+                    {lang.label}
+                  </option>
+                ))}
+              </select>
+            </div>
             <button
               onClick={handleStartProcess}
-              className="text-white bg-[#0369A1] hover:bg-blue-600 font-semibold px-4 py-2 rounded-md text-sm w-32"
+              className="text-white bg-[#0369A1] hover:bg-blue-600 font-semibold px-4 py-2 rounded-md text-sm w-full md:w-32"
             >
               Start Process
             </button>
           </div>
         </div>
       </div>
-      {/* Source File Section & Preview Section */}
+      {/* Source File Section && Preview Section */}
       <div className="grid grid-cols-2 gap-4 h-full">
         {/* Source File Section */}
         <div className="flex flex-col">
