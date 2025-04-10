@@ -1,11 +1,15 @@
+// app/process/page.tsx
+
 "use client";
 
+// import { ProcessProvider } from "../context/ProcessContext"
+// import ProcessLayout from "../components/layout/ProcessLayout";
 import ProcessPage from "./components/ProcessPage";
 
-interface PageProps {
-  backUrl: string;
-}
-
-export default function Page({ backUrl }: PageProps) { 
-  return <ProcessPage backUrl={backUrl} />;
+export default function Page() { 
+  return (
+    // <ProcessLayout>
+      <ProcessPage backUrl="/" />
+    // </ProcessLayout>
+  ); 
 }

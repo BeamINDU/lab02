@@ -16,7 +16,7 @@ export default function Navbar() {
   };
 
   const navigateToDashboard = () => {
-    router.push("/chatbot");
+    router.push("/reading");
   };
 
   return (

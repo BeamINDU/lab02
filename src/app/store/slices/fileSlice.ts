@@ -34,9 +34,9 @@ const fileSlice = createSlice({
       state.files = state.files.filter((_, index) => index !== action.payload); // ลบไฟล์
     },
     updateFile(state, action: PayloadAction<SourceFileData>) {
-      const index = state.files.findIndex(file => file.no === action.payload.no);
+      const index = state.files.findIndex(file => file.id === action.payload.id);
       if (index !== -1) {
-        state.files[index] = action.payload; // อัปเดตไฟล์ที่มี no ตรงกัน
+        state.files[index] = action.payload; // อัปเดตไฟล์ที่มี id ตรงกัน
       }
     }
   }

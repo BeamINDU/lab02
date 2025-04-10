@@ -5,7 +5,7 @@ import Cropper, { Crop, PixelCrop } from "react-image-crop";
  * Parameters for the usePhotoEditor hook.
  */
 interface UsePhotoEditorParams {
-  file?: File;
+  file?: File | null;
   defaultBrightness?: number;
   defaultContrast?: number;
   defaultSaturate?: number;

@@ -1,8 +1,22 @@
+// export interface OcrResult {
+//   file: SourceFileData;
+//   pageOcrResult?: PageOcrResult [];
+// }
 
 export interface SourceFileData {
-  no: number;
+  id: number;
+  name: string;
+  type: string;
+  size: number;
+  rawFile: File;
   url: string;
-  fileName?: string;
-  fileType?: string;
-  fileSize?: number;
+  base64: string;
+  ocrResult?: OcrResult [];
+}
+
+export interface OcrResult  {
+  page: number;
+  extractedText?: string;
+  base64Image: string;
+  blobUrl: string;
 }

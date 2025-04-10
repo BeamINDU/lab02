@@ -2,11 +2,12 @@
 
 import localFont from "next/font/local";
 import "../styles/globals.css";
-import Layout from "./components/layout/Layout";
+import Layout from "./components/layout/MainLayout";
 import { SessionProvider } from "next-auth/react";
 import { Provider } from "react-redux";
-import ThemeSwitcher from "./components/ThemeSwitcher";
-import { store } from "../app/store/store"; 
+// import ThemeSwitcher from "./components/theme/ThemeSwitcher";
+// import { store } from "../app/store/store"; 
+import { store } from '../app/redux/store';
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",

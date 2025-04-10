@@ -6,13 +6,11 @@ interface PreviewFileProps {
 }
 
 export default function PreviewFile({ fileData }: PreviewFileProps) {
-  // console.log("PDF URL:", fileData?.url);
-
   return (
     <>
       <div className="overflow-hidden max-h-[76vh] w-full h-full flex justify-center rounded-lg">
         {fileData ? (
-          fileData.fileType?.startsWith("image/") ? (
+          fileData.type?.startsWith("image/") ? (
             <img
               src={fileData.url}
               alt="Preview"

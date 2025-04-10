@@ -1,47 +1,49 @@
 import React, { useState } from "react";
 import useToast from '../../hooks/useToast';
+import { SourceFileData } from "../../interface/file"
 
-
-interface OptionProps {
-  label: string;
-  value: string;
-}
+// interface OptionProps {
+//   label: string;
+//   value: string;
+// }
 
 interface ExportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  optionsSourceFiles: OptionProps[];
-  onSave: (selectedFiles: OptionProps[]) => void;
-  onExportTxt: (selectedFiles: OptionProps[]) => void;
-  onSendExternal: (selectedFiles: OptionProps[]) => void;
+  sourceFiles: SourceFileData[];
+  onSave: (selectedFiles: SourceFileData[]) => void;
+  onExportTxt: (selectedFiles: SourceFileData[]) => void;
+  onSendExternal: (selectedFiles: SourceFileData[]) => void;
 }
 
 const ExportModal: React.FC<ExportModalProps> = ({
   isOpen,
   onClose,
-  optionsSourceFiles,
+  sourceFiles,
   onSave,
   onExportTxt,
   onSendExternal,
 }) => {
-  const [selectedFiles, setSelectedFiles] = useState<OptionProps[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<SourceFileData[]>([]);
   const { toastSuccess, toastError, toastInfo, toastWarning } = useToast();
 
-  const toggleSelectFile = (file: { label: string; value: string }) => {
-    setSelectedFiles((prev) =>
-      prev.some((f) => f.value === file.value)
-        ? prev.filter((f) => f.value !== file.value)
-        : [...prev, file]
-    );
+  
+  const toggleSelectFile = (file: SourceFileData) => {
+    setSelectedFiles((prev) => {
+      const isSelected = prev.some((f) => f.name === file.name);
+      return isSelected
+      ? prev.filter((f) => f.name !== file.name)
+      : [...prev, file];
+    });
   };
 
   const toggleSelectAll = (isSelected: boolean) => {
-    setSelectedFiles(isSelected ? optionsSourceFiles : []);
+    setSelectedFiles(isSelected ? [...sourceFiles] : []);
   };
 
   const handleAction = (
     action: 'save' | 'exportTxt' | 'sendExternal',
-    selectedFiles: OptionProps[]
+    selectedFiles: SourceFileData[]
   ) => {
     if (selectedFiles.length === 0) {
       toastError("Please select at least one file.");
@@ -92,12 +94,12 @@ const ExportModal: React.FC<ExportModalProps> = ({
               <label className="flex items-center mb-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={selectedFiles.length === optionsSourceFiles.length}
+                  checked={selectedFiles.length === sourceFiles.length}
                   onChange={(e) => toggleSelectAll(e.target.checked)}
                   className="hidden peer"
                 />
                 <div className="w-5 h-5 border-2 border-gray-400 rounded-md flex items-center justify-center peer-checked:bg-blue-600 peer-checked:border-blue-600 transition-all">
-                  {selectedFiles.length === optionsSourceFiles.length && (
+                  {selectedFiles.length === sourceFiles.length && (
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       className="h-4 w-4 text-white"
@@ -116,16 +118,16 @@ const ExportModal: React.FC<ExportModalProps> = ({
               </label>
 
               <div className="border-t">
-                {optionsSourceFiles?.map((item, index) => (
+                {sourceFiles?.map((item, index) => (
                   <label key={index} className="flex items-center mt-2 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={selectedFiles.some((f) => f.value === item.value)}
+                      checked={selectedFiles.some((f) => f.name === item.name)}
                       onChange={() => toggleSelectFile(item)}
                       className="hidden peer"
                     />
                     <div className="w-5 h-5 border-2 border-gray-400 rounded-md flex items-center justify-center peer-checked:bg-blue-600 peer-checked:border-blue-600 transition-all">
-                      {selectedFiles.some((f) => f.value === item.value) && (
+                      {selectedFiles.some((f) => f.name === item.name) && (
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           className="h-4 w-4 text-white"
@@ -140,7 +142,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
                         </svg>
                       )}
                     </div>
-                    <span className="ml-2 text-gray-700 font-medium">{item.label}</span>
+                    <span className="ml-2 text-gray-700 font-medium">{item.name}</span>
                   </label>
                 ))}
               </div>
