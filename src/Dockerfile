@@ -4,6 +4,24 @@ FROM node:22-alpine AS builder
 # Set working directory inside container
 WORKDIR /app
 
+# Install Python and build dependencies (Alpine uses apk, not apt-get)
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    build-base \
+    pkgconfig \
+    pixman-dev \
+    cairo-dev \
+    pango-dev \
+    jpeg-dev \
+    giflib-dev \
+    libjpeg-turbo-dev \
+    librsvg-dev
+
+# Create a symbolic link for python
+RUN ln -sf /usr/bin/python3 /usr/bin/python
+
 # Copy the package.json and package-lock.json from the root of the project
 COPY ../package*.json ./
 COPY ../tsconfig*.json ./
@@ -15,13 +33,6 @@ COPY ../fontawesome.js ./
 
 # Install dependencies
 RUN npm install --legacy-peer-deps
-
-# Add this to your Dockerfile
-RUN apt-get update && apt-get install -y \
-    python3 \
-    make \
-    g++ \
-    && ln -s /usr/bin/python3 /usr/bin/python
 
 # Copy the rest of the source code from the src folder
 COPY . .
