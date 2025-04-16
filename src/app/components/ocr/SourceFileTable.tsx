@@ -1,17 +1,13 @@
 import React, { useState } from "react";
-// import { useDispatch, useSelector } from 'react-redux';
 import useToast from "../../hooks/useToast";
-// import { setInputLanguage, setOutputLanguage, setFiles, addFile, removeFile, updateFile } from '../../store/slices/fileSlice';
-// import { RootState } from '../../store/store';
 import { SourceFileData, OcrResult } from "../../interface/file";
 import { PhotoEditor } from '../photo-editor/PhotoEditor'
 import ImageEditModal, { AdjustmentValues } from "./ImageEditModal";
 import ConfirmModal from "../../components/modal/ConfirmModal";
 // import { useProcessContext } from '../../context/ProcessContext';
-
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../../redux/store';
-import { removeFile } from '../../redux/actions';
+import { selectAllSourceFiles } from '../../redux/selectors/fileSelectors';
+import { removeFile } from '../../redux/actions/fileActions';
 
 interface SourceFileTableProps {
   fileData: SourceFileData[];
@@ -27,10 +23,11 @@ export default function SourceFileTable({
   // onEdit,
 }: SourceFileTableProps) {
   // const { processData, setProcessData } = useProcessContext();
-  const dispatch = useDispatch();
-  const files = useSelector((state: RootState) => state.files.fileData);
-  
   const { toastSuccess, toastError } = useToast();
+
+  const dispatch = useDispatch();
+  const files = useSelector(selectAllSourceFiles);
+  const [sourceFiles, setSourceFiles] = useState<SourceFileData[]>([]);
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isEditImageModalOpen, setEditImageModalOpen] = useState(false);
@@ -122,7 +119,7 @@ export default function SourceFileTable({
   };
 
   async function fetchFileFromUrl(fileData: SourceFileData): Promise<File> {
-    const response = await fetch(fileData.url);
+    const response = await fetch(fileData.blobUrl);
     const blob = await response.blob();
   
     const fileName = fileData.name || "";
@@ -152,7 +149,7 @@ export default function SourceFileTable({
     <ImageEditModal
       isOpen={isEditImageModalOpen}
       onClose={() => setEditImageModalOpen(false)}
-      imageSrc={selectedFile ? selectedFile.url : ""}
+      imageSrc={selectedFile ? selectedFile.blobUrl : ""}
       onSave={handleSaveEdit}
     />
   ) : null;

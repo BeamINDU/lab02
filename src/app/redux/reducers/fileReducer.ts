@@ -1,4 +1,4 @@
-import { ADD_FILES, REMOVE_FILE, UPDATE_FILE, CLEAR_FILES } from '../actions';
+import { ADD_FILES, REMOVE_FILE, UPDATE_FILE, CLEAR_FILES } from '../actions/fileActions';
 import { SourceFileData } from "../../interface/file";
 
 interface FileState {
@@ -38,7 +38,7 @@ export const fileReducer = (state = initialState, action: any): FileState => {
         ...state,
         fileData: []
       };
-    
+
     default:
       return state;
   }

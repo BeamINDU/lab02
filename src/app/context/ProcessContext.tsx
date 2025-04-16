@@ -1,9 +1,9 @@
 import React, { createContext, useState, useContext, ReactNode } from 'react';
-import { SourceFileData, OcrResult } from "../interface/file"
+import { SourceFileData } from "../interface/file"
 
 // กำหนดประเภทของข้อมูลใน context
 interface ProcessData {
-  files: SourceFileData[]; //FileData
+  files: SourceFileData[];
 }
 
 // กำหนดประเภทของ context ที่จะเก็บฟังก์ชัน `processData, setProcessData`

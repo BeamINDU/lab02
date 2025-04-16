@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ChartBarIcon, LanguagesIcon, HistoryIcon, FileTextIcon, Settings2Icon, LogOutIcon, ChevronUpIcon, ChevronDownIcon } from 'lucide-react'; 
+import { ChartBarIcon, LanguagesIcon, HistoryIcon, FileTextIcon, SettingsIcon, LogOutIcon, ChevronUpIcon, ChevronDownIcon } from 'lucide-react'; 
 // import { useSession } from "next-auth/react";
 import useToast from "@/app/hooks/useToast";
 import ConfirmModal from "@/app/components/modal/ConfirmModal";
@@ -59,12 +59,10 @@ export default function Sidebar() {
     {
       code: "setting",
       name: "Setting",
-      icon: <HistoryIcon className="w-7 h-7" />,
+      icon: <SettingsIcon className="w-7 h-7" />,
       child: [
         { code: "template", name: "Template", action: () => router.push("/template") },
         { code: "preference", name: "Preference", action: () => router.push("/preference") },
-        // { code: "template2", name: "Template2", action: () => router.push("/setting/template") },
-        // { code: "preference2", name: "Preference2", action: () => router.push("/setting/preference") },
       ],
     },
     {

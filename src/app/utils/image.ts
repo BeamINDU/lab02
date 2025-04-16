@@ -1,6 +1,6 @@
-
-// const resizedUrl = await resizeImage(selectedImage.url, 1000, 1000);
 const resizeImage = (url: string, maxWidth: number, maxHeight: number) => {
+  // const resizedUrl = await resizeImage(selectedImage.url, 1000, 1000);
+
   return new Promise<string>((resolve) => {
     const img = new Image();
     img.src = url;

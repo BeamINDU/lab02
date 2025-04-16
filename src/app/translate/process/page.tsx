@@ -1,5 +1,3 @@
-// app/reading/translate/page.tsx
-
 "use client";
 
 import ProcessPage from "../../process/components/ProcessPage";

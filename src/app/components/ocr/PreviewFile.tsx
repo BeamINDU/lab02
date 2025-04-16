@@ -12,13 +12,13 @@ export default function PreviewFile({ fileData }: PreviewFileProps) {
         {fileData ? (
           fileData.type?.startsWith("image/") ? (
             <img
-              src={fileData.url}
+              src={fileData.blobUrl}
               alt="Preview"
               className="w-full h-full object-contain"
             />
           ) : (
             <object
-              data={fileData.url}
+              data={fileData.blobUrl}
               type="application/pdf"
               className="w-full h-full object-contain"
             >

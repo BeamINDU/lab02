@@ -1,52 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-// import { createWorker } from 'tesseract.js';
 import { useDispatch } from 'react-redux';
-import { clearFiles } from '../../redux/actions';
+import { clearFiles } from '../../redux/actions/fileActions';
 import useToast from "../../hooks/useToast";
-
-import { useSelector } from 'react-redux';
-// import { RootState } from '../../store/store';
-import { RootState } from '../../redux/store';
-
 import ExportModal from "./ExportModal";
-import PreviewFile from "../../components/ocr/PreviewFile";
 import { SourceFileData } from "../../interface/file"
-import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
-import { convertFileSizeToMB } from "../../utils/format";
-
-// import { useProcessContext } from '../../context/ProcessContext';
-
-// interface OcrResult {
-//   pageNumber: number;
-//   file: SourceFileData;
-//   extractedText?: string;
-// }
-
-// interface OcrResult {
-//   page: number,
-//   sourceFile: SourceFileData;
-//   ocrResult?: string;
-// }
-
-// interface Options {
-//   label: string;
-//   value: string;
-// }
-
-// const optionsLanguage = [
-//   { label: 'English', value: 'eng' },
-//   { label: 'Japanese', value: 'jpn' },
-//   { label: 'Thai', value: 'tha' },
-// ];
-
-// enum Status {
-//   IDLE,
-//   UPLOADING,
-//   ANALYZING,
-//   SUCCESS,
-//   ERROR,
-// }
+import { useSelector } from 'react-redux';
+import { selectAllSourceFiles } from '../../redux/selectors/fileSelectors';
 
 interface ProcessPageProps {
   backUrl: string;
@@ -57,47 +17,14 @@ export default function ProcessPage({ backUrl }: ProcessPageProps) {
   const dispatch = useDispatch();
   const { toastSuccess, toastError } = useToast();
 
-  // const files = useSelector((state: RootState) => state.files.files);
-  const files = useSelector((state: RootState) => state.files.fileData);
-  // const outputLanguage = useSelector((state: RootState) => state.files.output_language);
-  // const sourceFiles = useSelector((state: RootState) => state.files.files);
-
-  // const { processData } = useProcessContext();
-
+  const files = useSelector(selectAllSourceFiles);
   const [sourceFiles, setSourceFiles] = useState<SourceFileData[]>([]);
 
   const [selectedSourceFile, setSelectedSourceFile] = useState<string>("");
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-
-  // const [ocrResult, setOcrResult] = useState<OcrResult[] | null>(null);
-  const [ocrStatus, setOcrStatus] = useState<string>('');
-  const [fileType, setFileType] = useState<string>('');
-
-  const [processing, setProcessing] = useState(false);
-  const [progress, setProgress] = useState<number>(0);
-
-  const [firstLoad, setFirstLoad] = useState(true);
-  // const [status, setStatus] = useState(Status.IDLE);
-
-  const workerRef = useRef<Tesseract.Worker | null>(null);
-
-  // useEffect(() => {
-  //   if (typeof window !== 'undefined') {
-  //     GlobalWorkerOptions.workerSrc = '/js/pdf.worker.min.js';
-  //   }
-  //   const initWorker = async () => {
-  //     workerRef.current = await createWorker("eng", 1, {
-  //       logger: (m) => console.log(m),
-  //     });
-  //   };
-  //   initWorker();
   
-  //   return () => {
-  //     if (workerRef.current) {
-  //       workerRef.current.terminate();
-  //     }
-  //   };
-  // }, []);
+  const [processing, setProcessing] = useState(false);
+  const [ocrStatus, setOcrStatus] = useState<string>('');
 
   useEffect(() => {
     if (files.length > 0) {
@@ -137,139 +64,6 @@ export default function ProcessPage({ backUrl }: ProcessPageProps) {
     }
   };
 
-  // const handleTranslate = () => {
-  //   if (selectedSourceFile === "") {
-  //     toastError("Please select at least one source file.");
-  //     return;
-  //   }
-
-  //   const selectedFile = sourceFiles.find(
-  //     (file) => file.name === selectedSourceFile
-  //   );
-
-  //   if (selectedFile) {
-  //     setFileType(selectedFile.type ?? "");
-
-  //     if (selectedFile.type?.startsWith("image/")) {
-  //       readImageText(selectedFile);
-  //     } else {
-  //       readPdfText(selectedFile);
-  //     }
-  //   } else {
-  //     toastError("No file found with the selected.");
-  //   }
-  // };
-
-  // const readPdfText = async (selectedImage: SourceFileData) => {
-  //   if (!workerRef.current) return;
-  
-  //   try {
-  //     setProcessing(true);
-  //     setOcrStatus("Processing...");
-  //     setProgress(0);
-  //     setOcrResult([]);
-
-  //     const pdf = await getDocument(selectedImage.url).promise;
-  //     const numPages = pdf.numPages;
-
-  //     for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-  //       const page = await pdf.getPage(pageNum); 
-  //       const canvas = document.createElement('canvas');
-  //       const context = canvas.getContext('2d');
-  //       const viewport = page.getViewport({ scale: 1 });
-  
-  //       canvas.height = viewport.height;
-  //       canvas.width = viewport.width;
-
-  //       if (context) {
-  //         await page.render({ canvasContext: context, viewport }).promise;
-  //         const base64Image = canvas.toDataURL('image/jpeg', 0.5);
-  //         const { data: { text } } = await workerRef.current.recognize(base64Image);
-  
-  //         setOcrResult(prev => [
-  //           ...(prev || []),
-  //           {
-  //             page: pageNum,
-  //             sourceFile: {
-  //               ...selectedImage,
-  //               url: base64Image,
-  //             },
-  //             ocrResult: text,
-  //           },
-  //         ]);
-  
-  //         setProgress(((pageNum - 1) + 1) / numPages);
-  //       } else {
-  //         throw new Error("Failed to get canvas context.");
-  //       }
-  //     }
-      
-  //     setOcrStatus("Completed");
-  //   } catch (error) {
-  //     console.error(error);
-  //     setOcrStatus("Error occurred during processing.");
-  //   } finally {
-  //     setProcessing(false);
-  //   }
-  // };
-  
-  // const readImageText = async (selectedImage: SourceFileData) => {
-  //   if (!workerRef.current) return;
-  
-  //   try {
-  //     setProcessing(true);
-  //     setOcrStatus("Processing...");
-  //     setProgress(0);
-  //     setOcrResult([]);
-  
-  //     // const resizedUrl = await resizeImage(selectedImage.url, 1000, 1000);
-  //     setOcrResult([{
-  //       page: 1,
-  //       sourceFile: selectedImage
-  //     }]);
-      
-  //     const { data: { text } } = await workerRef.current.recognize(selectedImage.url);
-  //     setProgress(1);
-
-  //     setOcrResult([{
-  //       page: 1,
-  //       sourceFile: selectedImage,
-  //       ocrResult: text,
-  //     }]);
-  
-  //     setOcrStatus("Completed");
-  //   } catch (error) {
-  //     console.error(error);
-  //     setOcrStatus("Error occurred during processing.");
-  //   } finally {
-  //     setProcessing(false);
-  //   }
-  // };
-  
-  // const resizeImage = (url: string, maxWidth: number, maxHeight: number) => {
-  //   return new Promise<string>((resolve) => {
-  //     const img = new Image();
-  //     img.src = url;
-  //     img.onload = () => {
-  //       const canvas = document.createElement("canvas");
-  //       let width = img.width;
-  //       let height = img.height;
-  
-  //       if (width > maxWidth || height > maxHeight) {
-  //         const scale = Math.min(maxWidth / width, maxHeight / height);
-  //         width *= scale;
-  //         height *= scale;
-  //       }
-  
-  //       canvas.width = width;
-  //       canvas.height = height;
-  //       const ctx = canvas.getContext("2d");
-  //       ctx?.drawImage(img, 0, 0, width, height);
-  //       resolve(canvas.toDataURL("image/jpeg", 0.7));
-  //     };
-  //   });
-  // };
-  
   return (
     <div className="rounded-lg p-4">
       {/* Back & Export Button*/}
@@ -321,7 +115,7 @@ export default function ProcessPage({ backUrl }: ProcessPageProps) {
             <h2 className="text-black text-lg font-bold flex items-center justify-center">Result</h2>
           </div>
           <div className="h-[calc(100vh-240px)] overflow-y-auto -mr-4">
-            {files
+            {sourceFiles
               .filter((item) => item.name === selectedSourceFile)
               .map((item, index) => (
                 <div className="mb-2" key={index}>

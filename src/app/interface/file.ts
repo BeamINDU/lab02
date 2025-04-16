@@ -8,9 +8,8 @@ export interface SourceFileData {
   name: string;
   type: string;
   size: number;
-  rawFile: File;
-  url: string;
-  base64: string;
+  base64Data: string;
+  blobUrl: string;
   ocrResult?: OcrResult [];
 }
 

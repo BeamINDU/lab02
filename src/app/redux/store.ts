@@ -1,7 +1,7 @@
 // redux/store.ts
 import { configureStore } from '@reduxjs/toolkit';
 import { fileReducer } from './reducers/fileReducer';
-import { ADD_FILES, REMOVE_FILE, UPDATE_FILE } from './actions';
+import { ADD_FILES } from './actions/fileActions';
 
 export const store = configureStore({
   reducer: {
@@ -10,7 +10,7 @@ export const store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
-        ignoredActions: [ADD_FILES],
+        // ignoredActions: [ADD_FILES],
       },
     }),
 });
