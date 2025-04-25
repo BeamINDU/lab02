@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import ConfirmModal from "../components/modal/ConfirmModal";
+import ConfirmModal from "../modal/ConfirmModal";
 
 interface FileUploadModalProps {
   isOpen: boolean;

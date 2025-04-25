@@ -2,37 +2,27 @@ import React, { useState } from "react";
 import useToast from '../../hooks/useToast';
 import { SourceFileData } from "../../interface/file"
 
-// interface OptionProps {
-//   label: string;
-//   value: string;
-// }
-
-interface ExportModalProps {
+interface SaveModalProps {
   isOpen: boolean;
   onClose: () => void;
   sourceFiles: SourceFileData[];
   onSave: (selectedFiles: SourceFileData[]) => void;
-  onExportTxt: (selectedFiles: SourceFileData[]) => void;
-  onSendExternal: (selectedFiles: SourceFileData[]) => void;
 }
 
-const ExportModal: React.FC<ExportModalProps> = ({
+export default function SaveModal({
   isOpen,
   onClose,
   sourceFiles,
   onSave,
-  onExportTxt,
-  onSendExternal,
-}) => {
+}: SaveModalProps) {
   const [selectedFiles, setSelectedFiles] = useState<SourceFileData[]>([]);
-  const { toastSuccess, toastError, toastInfo, toastWarning } = useToast();
-
+  const { toastError } = useToast();
   
   const toggleSelectFile = (file: SourceFileData) => {
     setSelectedFiles((prev) => {
-      const isSelected = prev.some((f) => f.fileName === file.fileName);
+      const isSelected = prev.some((f) => f.id === file.id);
       return isSelected
-      ? prev.filter((f) => f.fileName !== file.fileName)
+      ? prev.filter((f) => f.id !== file.id)
       : [...prev, file];
     });
   };
@@ -41,29 +31,17 @@ const ExportModal: React.FC<ExportModalProps> = ({
     setSelectedFiles(isSelected ? [...sourceFiles] : []);
   };
 
-  const handleAction = (
-    action: 'save' | 'exportTxt' | 'sendExternal',
-    selectedFiles: SourceFileData[]
-  ) => {
+  const handleSave = () => {
     if (selectedFiles.length === 0) {
       toastError("Please select at least one file.");
       return;
     }
 
-    switch (action) {
-      case 'save':
-        onSave(selectedFiles);
-        break;
-      case 'exportTxt':
-        onExportTxt(selectedFiles);
-        break;
-      case 'sendExternal':
-        onSendExternal(selectedFiles);
-        break;
-      default:
-        break;
-    }
+    selectedFiles.forEach((file) => {
 
+    });
+
+    // onSave(selectedFiles);
     resetState();
     onClose();
   };
@@ -80,7 +58,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
         <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl p-6 h-[60vh]">
           {/* Header */}
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold">Export</h2>
+            <h2 className="text-lg font-semibold">Save</h2>
             <button onClick={onClose} className="text-gray-500 hover:text-gray-800">
               ✕
             </button>
@@ -122,12 +100,12 @@ const ExportModal: React.FC<ExportModalProps> = ({
                   <label key={index} className="flex items-center mt-2 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={selectedFiles.some((f) => f.fileName === item.fileName)}
+                      checked={selectedFiles.some((f) => f.id === item.id)}
                       onChange={() => toggleSelectFile(item)}
                       className="hidden peer"
                     />
                     <div className="w-5 h-5 border-2 border-gray-400 rounded-md flex items-center justify-center peer-checked:bg-blue-600 peer-checked:border-blue-600 transition-all">
-                      {selectedFiles.some((f) => f.fileName === item.fileName) && (
+                      {selectedFiles.some((f) => f.id === item.id) && (
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           className="h-4 w-4 text-white"
@@ -148,7 +126,6 @@ const ExportModal: React.FC<ExportModalProps> = ({
               </div>
             </div>
 
-
             {/* Action Buttons */}
             <div className="flex justify-center gap-2 mt-auto mb-10">
               <button
@@ -158,22 +135,10 @@ const ExportModal: React.FC<ExportModalProps> = ({
                 Close
               </button>
               <button
-                onClick={() => handleAction('save', selectedFiles)}
+                onClick={() => handleSave()}
                 className="text-white bg-[#0369A1] hover:bg-blue-600 font-semibold px-4 py-2 rounded-md text-sm w-32"
               >
                 Save
-              </button>
-              <button
-                onClick={() => handleAction('exportTxt', selectedFiles)}
-                className="text-white bg-[#0369A1] hover:bg-blue-600 font-semibold px-4 py-2 rounded-md text-sm w-32"
-              >
-                Export .txt
-              </button>
-              <button
-                onClick={() => handleAction('sendExternal', selectedFiles)}
-                className="text-white bg-[#0369A1] hover:bg-blue-600 font-semibold px-4 py-2 rounded-md text-sm w-32"
-              >
-                Send External
               </button>
             </div>
           </div>
@@ -183,5 +148,3 @@ const ExportModal: React.FC<ExportModalProps> = ({
     </>
   );
 };
-
-export default ExportModal;

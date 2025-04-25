@@ -51,7 +51,7 @@ export default function LoginForm() {
             />
             <div className="ml-0">
               <h1 className="text-2xl font-bold text-black">TAKUMI</h1>
-              <p className="text-black text-sm font-bold">(RAG)</p>
+              <p className="text-black text-sm font-bold">(OCR)</p>
             </div>
           </div>
 

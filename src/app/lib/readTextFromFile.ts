@@ -1,6 +1,6 @@
-import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
-import { convertToBase64, convertBase64ToBlobUrl } from '../utils/file';
+import { convertBase64ToBlobUrl } from '../utils/file';
 import { SourceFileData, OcrResult } from '../interface/file';
+import { getDocument } from 'pdfjs-dist';
 import Tesseract from 'tesseract.js';
 
 export const readTextFromFile = async (
@@ -8,22 +8,32 @@ export const readTextFromFile = async (
   selectedFile: SourceFileData,
   setProgress: (progress: number) => void
 ): Promise<SourceFileData> => {
+  
   if (!worker) throw new Error("Tesseract worker is not initialized");
 
-  if (selectedFile.type?.startsWith("image/")) {
-    const { data: { text } } = await worker.recognize(selectedFile.blobUrl);
+  const sourceLang = "eng";
+
+  if (selectedFile.fileType?.startsWith("image/")) {
+
+    const { data: { text } } = await worker.recognize(selectedFile.blobUrl ?? "");
+
+    const extractedTextString = JSON.stringify({
+      primary_language: sourceLang,
+      natural_text: `${text}`
+    });
 
     return {
       ...selectedFile,
       ocrResult: [{
         page: 1,
-        extractedText: text,
+        extractedText: extractedTextString,
         base64Image: selectedFile.base64Data,
         blobUrl: selectedFile.blobUrl
       }]
     };
   } else {
-    const pdf = await getDocument(selectedFile.blobUrl).promise;
+    
+    const pdf = await getDocument(selectedFile.blobUrl ?? "").promise;
     const numPages = pdf.numPages;
     const ocrResult: OcrResult[] = [];
 
@@ -39,14 +49,23 @@ export const readTextFromFile = async (
       if (context) {
         await page.render({ canvasContext: context, viewport }).promise;
 
-        const base64Image = canvas.toDataURL(selectedFile.type, 0.5);
+        const base64Image = canvas.toDataURL(selectedFile.fileType, 0.5);
         const blobUrl = convertBase64ToBlobUrl(base64Image);
 
         const { data: { text } } = await worker.recognize(base64Image);
 
+        const extractedTextString = JSON.stringify({
+          primary_language: sourceLang,
+          is_rotation_valid: true,
+          rotation_correction: 0,
+          is_table: false,
+          is_diagram: false,
+          natural_text: `${text}`
+        });
+
         ocrResult.push({
           page: pageNum,
-          extractedText: text,
+          extractedText: extractedTextString,
           base64Image,
           blobUrl
         });

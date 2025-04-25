@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, ChangeEvent } from 'react';
 import { RotateCcw, FlipHorizontal, FlipVertical, ZoomIn, ZoomOut, Crop } from 'lucide-react';
 import { PhotoEditorProps } from './interface';
 import { usePhotoEditor } from '../../hooks/usePhotoEditor';
-const modalHeaderButtonClasses = 'text-gray-900 bg-white border border-gray-300 ml-2 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-100 font-medium rounded-full text-sm px-2 py-1 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700';
 
 export const PhotoEditor: React.FC<PhotoEditorProps> = ({
 	file,
@@ -37,6 +36,8 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({
     crop: 'Crop',
 	}
 }) => {
+  // const modalHeaderButtonClasses = 'text-gray-900 bg-white border border-gray-300 ml-2 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-100 font-medium rounded-full text-sm px-2 py-1 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700';
+
   const {
 		canvasRef,
 		brightness,
@@ -179,27 +180,33 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({
 							style={{
 								// height: modalHeight ?? '38rem',
 								// width: modalWidth ?? '40rem'
-                height: modalHeight ?? '55rem',
+                height: modalHeight ?? '53rem',
 								width: modalWidth ?? '100rem'
 							}}
 							id='photo-editor-modal'
-							className='relative rounded-lg shadow-lg max-sm:w-[22rem] bg-white dark:bg-[#1e1e1e]'
+              className='relative rounded-lg shadow-lg max-sm:w-[22rem] bg-white'
+							// className='relative rounded-lg shadow-lg max-sm:w-[22rem] bg-white dark:bg-[#1e1e1e]'
 						>
 							<div className='flex justify-end p-2 rounded-t'>
 								<button
-									className={modalHeaderButtonClasses}
+                  className="px-3 py-1 text-md rounded transition bg-gray-300 text-gray-500 ml-2"
+									// className={modalHeaderButtonClasses}
 									onClick={closeEditor}
 									type='button'
 								>
 									{labels.close}
 								</button>
 								<button
-									className={modalHeaderButtonClasses}
+                  className="px-3 py-1 text-md rounded transition text-white bg-[#0369A1] hover:bg-blue-600 ml-2"
+									// className={modalHeaderButtonClasses}
 									onClick={() => saveImage()}
 									type='button'
 								>
 									{labels.save}
 								</button>
+                {/* <button onClick={closeEditor} className="text-xl text-gray-500 hover:text-gray-800">
+                  ✕
+                </button> */}
 							</div>
 							<div className='p-2'>
 								<div className='flex flex-col'>
@@ -210,7 +217,8 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({
 											maxHeight: maxCanvasHeight ?? '40rem',
 											maxWidth: maxCanvasWidth ?? '70rem'
 										}}
-										className={`canvas border dark:border-gray-700 object-fit mx-auto ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                    className={`canvas border-gray-700 object-fit mx-auto ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+										// className={`canvas border dark:border-gray-700 object-fit mx-auto ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
 										id='canvas'
 										ref={canvasRef}
 										onPointerDown={handlePointerDown}
@@ -221,6 +229,7 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({
 										width={typeof canvasWidth === 'number' ? canvasWidth : undefined}
 										height={typeof canvasHeight === 'number' ? canvasHeight : undefined}
 									/>
+
 									<div className='items-center flex m-1 flex-col'>
 										<div className='flex flex-col bottom-12 gap-1 mt-4 max-sm:w-72 w-11/12 absolute '>
 											{renderInputs.map(
@@ -229,7 +238,8 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({
 														<div key={input.name} className='flex flex-row items-center'>
 															<label
 																id={`${input.name}InputLabel`}
-																className='text-xs font-medium text-gray-900 dark:text-white w-10'
+                                className='text-xs font-medium text-gray-900 w-10'
+																// className='text-xs font-medium text-gray-900 dark:text-white w-10'
 															>
 																{input.name[0].toUpperCase() + input.name.slice(1)}:{' '}
 															</label>
@@ -244,7 +254,8 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({
 																}
 																min={input.min}
 																max={input.max}
-																className='ml-[1.7rem] w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer range-sm dark:bg-gray-700'
+                                className='ml-[1.7rem] w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer range-sm'
+																// className='ml-[1.7rem] w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer range-sm dark:bg-gray-700'
 															/>
 															<input
 																type='number'
@@ -255,86 +266,115 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({
 																}
 																min={input.min}
 																max={input.max}
-																className='w-14 ml-2 rounded-md text-right bg-gray-100 text-black dark:bg-gray-700 dark:text-white'
+                                className='w-14 ml-2 rounded-md text-right bg-gray-100 text-black'
+																// className='w-14 ml-2 rounded-md text-right bg-gray-100 text-black dark:bg-gray-700 dark:text-white'
 															/>
 														</div>
 													)
 											)}
 										</div>
 									</div>
-									<div className='flex justify-center'>
+
+                  <div className='flex justify-center'>
 										<div className='mb-1 absolute bottom-0 mt-2'>
 											<button
 												title={labels.reset}
-												className='mx-1 focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-700 rounded-md p-1'
+                        className='mx-1 focus:ring-2 focus:ring-gray-300 rounded-md p-1'
+												// className='mx-1 focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-700 rounded-md p-1'
 												onClick={resetFilters}
 												aria-label={labels.reset}
 												type='button'
 											>
-                        <RotateCcw className="w-6 h-6 text-white dark:text-slate-200" />
+                        {/* <RotateCcw className="w-6 h-6 text-white dark:text-slate-200" /> */}
+                        <RotateCcw className="w-6 h-6 text-slate-500" />
 											</button>
 
                       {allowCrop && (
                         <button
                           title={labels.crop}
-                          className='mx-1 focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-700 rounded-md p-1'
+                          className='mx-1 focus:ring-2 focus:ring-gray-300 rounded-md p-1'
                           onClick={handleCrop}
                           aria-label={labels.crop}
                           type='button'
                         >
-                          <Crop className="w-6 h-6 text-white dark:text-slate-200" />
+                          <Crop className="w-6 h-6 text-slate-500" />
                         </button>
                       )}
                       
 											{allowFlip && (
 												<div className='inline-block'>
 													<button
-														className='mx-1 focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-700 rounded-md p-1'
+														className='mx-1 focus:ring-2 focus:ring-gray-300 rounded-md p-1'
 														onClick={() => setFlipHorizontal(!flipHorizontal)}
 														type='button'
 														title={labels.flipHorizontal}
 														aria-label={labels.flipHorizontal}
 													>
-                            <FlipHorizontal className="w-6 h-6 text-white dark:text-slate-200" />
+                            <FlipHorizontal className="w-6 h-6 text-slate-500" />
 													</button>
 													<button
-														className='mx-1 focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-700 rounded-md p-1'
+														className='mx-1 focus:ring-2 focus:ring-gray-300 rounded-md p-1'
 														onClick={() => setFlipVertical(!flipVertical)}
 														type='button'
 														title={labels.flipVertical}
 														aria-label={labels.flipVertical}
 													>
-														<FlipVertical className="w-6 h-6 text-white dark:text-slate-200" />
+														<FlipVertical className="w-6 h-6 text-slate-500" />
 													</button>
 												</div>
 											)}
+
 											{allowZoom && (
 												<div className='inline-block'>
 													<button
 														type='button'
-														className='mx-1 focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-700 rounded-md p-1'
+														className='mx-1 focus:ring-2 focus:ring-gray-300 rounded-md p-1'
 														onClick={handleZoomIn}
 														title={labels.zoomIn}
 														aria-label={labels.zoomIn}
 													>
-														<ZoomIn className="w-6 h-6 text-white dark:text-slate-200" />
+														<ZoomIn className="w-6 h-6 text-slate-500" />
 													</button>
 													<button
 														type='button'
-														className='mx-1 focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-700 rounded-md p-1'
+														className='mx-1 focus:ring-2 focus:ring-gray-300 rounded-md p-1'
 														onClick={handleZoomOut}
 														title={labels.zoomOut}
 														aria-label={labels.zoomOut}
 													>
-														<ZoomOut className="w-6 h-6 text-white dark:text-slate-200" />
+														<ZoomOut className="w-6 h-6 text-slate-500" />
 													</button>
 												</div>
 											)}
 										</div>
 									</div>
+
 								</div>
 							</div>
+              
+              {/* <div className='flex justify-center'>
+                <div className='mb-3 absolute bottom-0 mt-1'>
+                  <button
+                    className="px-3 py-1 text-md rounded transition bg-gray-300 text-gray-500 ml-2"
+                    // className={modalHeaderButtonClasses}
+                    onClick={closeEditor}
+                    type='button'
+                  >
+                    {labels.close}
+                  </button>
+                  <button
+                    className="px-3 py-1 text-md rounded transition text-white bg-[#0369A1] hover:bg-blue-600 ml-2"
+                    // className={modalHeaderButtonClasses}
+                    onClick={() => saveImage()}
+                    type='button'
+                  >
+                    {labels.save}
+                  </button>
+                </div>
+              </div> */}
+
 						</div>
+            
 					</div>
 					<div className='opacity-75 fixed inset-0 z-40 bg-black'></div>
 				</>

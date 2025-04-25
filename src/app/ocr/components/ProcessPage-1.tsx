@@ -6,30 +6,27 @@ import { SourceFileData } from "../../interface/file"
 import { useSelector } from 'react-redux';
 import { selectAllSourceFiles } from '../../redux/selectors/fileSelectors';
 import useToast from "../../hooks/useToast";
+import PreviewFile from "./PreviewFile";
+import PreviewData from "../../components/ocr/PreviewData";
 import ExportModal from "./ExportModal";
-import PreviewFile from "../../ocr/components/PreviewFile";
+import SaveModal from "./SaveModal";
 
-interface ProcessPageProps {
-  backUrl: string;
-}
-
-export default function ProcessPage({ backUrl }: ProcessPageProps) {
+export default function ProcessPage() {
   const router = useRouter();
   const dispatch = useDispatch();
   const { toastSuccess, toastError } = useToast();
 
   const files = useSelector(selectAllSourceFiles);
   const [sourceFiles, setSourceFiles] = useState<SourceFileData[]>([]);
-
-  const [selectedSourceFile, setSelectedSourceFile] = useState<string>("");
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [selectedSourceFile, setSelectedSourceFile] = useState<number>();
   
-  // const [processing, setProcessing] = useState(false);
-  // const [ocrStatus, setOcrStatus] = useState<string>('');
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
 
   useEffect(() => {
     if (files.length > 0) {
       setSourceFiles(files);
+      // setSelectedSourceFile[Number(files[0].id)]
     }
   }, [files]);
 
@@ -39,42 +36,67 @@ export default function ProcessPage({ backUrl }: ProcessPageProps) {
 
   const handleBack = () => {
     handleClear();
-    router.push(backUrl);
+    router.push('/ocr');
   } 
 
   const handleOpenExportModal = () => setIsExportModalOpen(true);
-
   const handleCloseExportModal = () => setIsExportModalOpen(false);
 
-  const handleSaveExport = (option: SourceFileData[] | null) => {
+  const handleOpenSaveModal = () => setIsSaveModalOpen(true);
+  const handleCloseSaveModal = () => setIsSaveModalOpen(false);
+
+  const handleSave = (option: SourceFileData[] | null) => {
     if (option) {
       const fileNames = option.map((file) => file.fileName).join(", ");
       toastSuccess(`File ${fileNames} saved successfully`);
     }
   };
 
-  const handleExportTxt = (option: SourceFileData[] | null) => {
-    if (option) {
-      toastSuccess(`Exported to text successfully.`);
+  const handleExportTxt = (selectedFiles: SourceFileData[] | null) => {
+    if (selectedFiles) {
+      selectedFiles.forEach((file) => {
+        const content = file.ocrResult?.map(r => r.extractedText).join('\n\n') || '';
+        const blob = new Blob([content], { type: "text/plain" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${file.fileName}.txt`;
+        a.click();
+        URL.revokeObjectURL(url);
+      });
     }
   };
 
-  const handleSendExternal = (option: SourceFileData[] | null) => {
-    if (option) {
+  const handleSendExternal = (selectedFiles: SourceFileData[] | null) => {
+    if (selectedFiles) {
+      selectedFiles.forEach((file) => {
+        
+      });
       toastSuccess(`The result(s) will be sent to the external system.`);
     }
   };
 
   return (
     <div className="rounded-lg p-4">
-      {/* Back & Export Button*/}
-      <div className="flex justify-between items-center mb-3">
-        <button className="text-white bg-[#818893] hover:bg-gray-500 font-semibold px-4 py-2 rounded-md text-sm w-24" onClick={handleBack}>
-          Back
-        </button>
-        <button className="text-white bg-[#0369A1] hover:bg-blue-600 font-semibold px-4 py-2 rounded-md text-sm w-24" onClick={handleOpenExportModal}>
-          Export
-        </button>
+      {/* Back & Save & Export Button*/}
+      <div className="grid grid-cols-2 gap-4 h-full">
+        <div className="flex flex-col">
+          <div className="mb-4 space-x-2">
+            <button className="text-white bg-[#818893] hover:bg-gray-500 font-semibold px-4 py-2 rounded-md text-sm w-24" onClick={handleBack}>
+              Back
+            </button>
+          </div>
+        </div>
+        <div className="flex flex-col items-end">
+          <div className="flex items-center space-x-2 mb-4">
+            <button className="text-white bg-[#0369A1] hover:bg-blue-600 font-semibold px-4 py-2 rounded-md text-sm w-24" onClick={handleOpenSaveModal}>
+              Save
+            </button>
+            <button className="text-white bg-[#0369A1] hover:bg-blue-600 font-semibold px-4 py-2 rounded-md text-sm w-24" onClick={handleOpenExportModal}>
+              Export
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Language Selection & Translate Button*/}
@@ -85,11 +107,11 @@ export default function ProcessPage({ backUrl }: ProcessPageProps) {
             id="files-select"
             className="px-4 py-2 border rounded-md w-full"
             value={selectedSourceFile}
-            onChange={(e) => setSelectedSourceFile(e.target.value)}
+            onChange={(e) => setSelectedSourceFile(Number(e.target.value))}
           >
-            <option value="">--- Please select source file ---</option>
-            {sourceFiles?.map((file, index) => (
-              <option key={index} value={file.fileName}>
+            <option value={-1}>--- Please select source file ---</option>
+            {sourceFiles?.map((file) => (
+              <option key={file.id} value={file.id}>
                 {file.fileName}
               </option>
             ))}
@@ -114,9 +136,9 @@ export default function ProcessPage({ backUrl }: ProcessPageProps) {
             <h2 className="text-black text-lg font-bold flex items-center justify-center">Source</h2>
             <h2 className="text-black text-lg font-bold flex items-center justify-center">Result</h2>
           </div>
-          <div className="h-[calc(100vh-240px)] overflow-y-auto -mr-4">
+          <div className="h-[calc(100vh-245px)] overflow-y-auto -mr-4">
             {sourceFiles
-              .filter((item) => item.fileName === selectedSourceFile)
+              .filter((item) => item.id === selectedSourceFile)
               .map((item, index) => (
                 <div className="mb-2" key={index}>
                   {item.ocrResult?.map((page, pageIndex) => (
@@ -141,21 +163,7 @@ export default function ProcessPage({ backUrl }: ProcessPageProps) {
                         <div>
                           <div className="mr-4 bg-white rounded-lg shadow-md h-[calc(100vh-293px)]">
                             {page? (
-                              <div
-                                dangerouslySetInnerHTML={{
-                                  __html: page?.extractedText?.replace(/\n/g, "<br />").replace(/[=,—,-,+]/g, " ") || "",
-                                }}
-                                style={{
-                                  border: "1px solid white",
-                                  width: "100%",
-                                  maxHeight: "100%",
-                                  padding: 10,
-                                  borderRadius: 10,
-                                  fontSize: 14,
-                                  overflowY: "auto",
-                                  height: "100%",
-                                }}
-                              />
+                              <PreviewData data={page.extractedText ?? ""} />
                             ) : (
                               <p className="text-gray-500">No file selected</p>
                             )}
@@ -170,12 +178,19 @@ export default function ProcessPage({ backUrl }: ProcessPageProps) {
         </>
       )}
 
+      {/* Save Modal */}
+      <SaveModal
+        isOpen={isSaveModalOpen}
+        onClose={handleCloseSaveModal}
+        sourceFiles={sourceFiles}
+        onSave={handleSave}
+      />
+
       {/* Export Modal */}
       <ExportModal
         isOpen={isExportModalOpen}
         onClose={handleCloseExportModal}
         sourceFiles={sourceFiles}
-        onSave={handleSaveExport}
         onExportTxt={handleExportTxt}
         onSendExternal={handleSendExternal}
       />

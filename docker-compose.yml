@@ -3,14 +3,15 @@ version: '3.8'
 services:
   nextjs-app:
     image: takumi/ocr-frontend
-    container_name: takumi/ocr-frontend
+    container_name: ocr-frontend
     build:
       context: .
       dockerfile: src/Dockerfile 
     ports:
-      - "3000:3000" 
+      - "3030:3000" 
     volumes:
-      - ./src:/app 
+      - ./:/app
+      - /app/node_modules
     environment:
       - NODE_ENV=development
     command: npm run dev 

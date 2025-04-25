@@ -1,14 +1,25 @@
-"use client";
+// "use client";
 
-import ReadingPage from "./components/ReadingPage";
-// import { ProcessProvider } from "../context/ProcessContext";
-// import ProcessLayout from "../components/layout/ProcessLayout";
+// import ReadingPage from "./components/ReadingPage";
+// // import { ProcessProvider } from "../context/ProcessContext";
+// // import ProcessLayout from "../components/layout/ProcessLayout";
 
-export default function Page() {
+// export default function Page() {
+//   return (
+//       // <ProcessLayout>
+//         <ReadingPage />
+//       // </ProcessLayout>
+//   );
+// }
+
+
+import OcrForm from './components/OcrForm';
+
+export default function OcrPage() {
   return (
-      // <ProcessLayout>
-        <ReadingPage />
-      // </ProcessLayout>
+    <main className="p-2">
+      <h1 className="text-2xl font-bold mb-4">OCR Upload</h1>
+      <OcrForm />
+    </main>
   );
 }
-

@@ -1,21 +1,32 @@
-// export interface OcrResult {
-//   file: SourceFileData;
-//   pageOcrResult?: PageOcrResult [];
-// }
+
+export interface OcrRequest {
+  fileName: string;
+  fileType: string;
+  base64Data: string;
+}
 
 export interface SourceFileData {
-  id: number;
-  name: string;
-  type: string;
-  size: number;
+  id?: number;
+  // fileId?: number;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
   base64Data: string;
-  blobUrl: string;
+  blobUrl?: string;
+  outputLanguage?: string;
   ocrResult?: OcrResult [];
 }
 
 export interface OcrResult  {
   page: number;
-  extractedText?: string;
   base64Image: string;
-  blobUrl: string;
+  blobUrl?: string;
+  extractedText?: string;
+  translateText?: string;
 }
+
+export interface OcrTextResult {
+  primary_language: string;
+  natural_text: string;
+}
+

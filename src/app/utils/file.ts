@@ -1,24 +1,19 @@
-export const convertToBase64 = (file: File): Promise<string> => {
+export const convertFileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
-    // สำหรับ image ใช้ readAsDataURL ได้เลย
+    // สำหรับ image
     if (file.type.startsWith("image/")) {
       reader.readAsDataURL(file);
       reader.onload = () => resolve(reader.result as string);
       reader.onerror = reject;
     }
 
-    // สำหรับ PDF ใช้ readAsArrayBuffer แล้วแปลง base64
+    // สำหรับ PDF
     else if (file.type === "application/pdf") {
-      reader.readAsArrayBuffer(file);
       reader.onload = () => {
-        const buffer = reader.result as ArrayBuffer;
-        const binary = new Uint8Array(buffer).reduce(
-          (acc, byte) => acc + String.fromCharCode(byte),
-          ""
-        );
-        const base64 = `data:application/pdf;base64,${btoa(binary)}`;
+        const result = reader.result as string;
+        const base64 = result.split(',')[1];
         resolve(base64);
       };
       reader.onerror = reject;
@@ -30,25 +25,41 @@ export const convertToBase64 = (file: File): Promise<string> => {
   });
 };
 
-export const convertBase64ToBlobUrl = (base64: string): string => {
-  // แยกส่วน metadata (เช่น data:image/png;base64,) ออกจากข้อมูลจริง
-  const [meta, data] = base64.split(',');
+export const convertBase64ToBlobUrl = (base64: string, mimeType = 'image/png'): string => {
+  let data = base64;
+  let detectedMime = mimeType;
 
-  if (!meta || !data) throw new Error("Invalid base64 format");
+  if (base64.includes(',')) {
+    const [meta, rawData] = base64.split(',');
+    if (!rawData) throw new Error("Invalid base64 format");
+    data = rawData;
 
-  // ดึง mimeType จาก metadata
-  const mimeMatch = meta.match(/data:(.*?);base64/);
-  const mimeType = mimeMatch?.[1] || 'application/octet-stream';
+    const mimeMatch = meta.match(/data:(.*?);base64/);
+    if (mimeMatch) {
+      detectedMime = mimeMatch[1];
+    }
+  }
 
-  // แปลง base64 string เป็น binary
-  const byteCharacters = atob(data);
-  const byteNumbers = new Array(byteCharacters.length).fill(0).map((_, i) => byteCharacters.charCodeAt(i));
-  const byteArray = new Uint8Array(byteNumbers);
-
-  // สร้าง Blob แล้วแปลงเป็น Object URL
-  const blob = new Blob([byteArray], { type: mimeType });
-  return URL.createObjectURL(blob);
+  try {
+    const byteCharacters = atob(data);
+    const byteNumbers = new Array(byteCharacters.length).fill(0).map((_, i) => byteCharacters.charCodeAt(i));
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: detectedMime });
+    return URL.createObjectURL(blob);
+  } catch (err) {
+    throw new Error("Invalid base64 content");
+  }
 };
 
-
-
+export const readFileAsBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      const base64 = result.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
