@@ -1,6 +1,6 @@
 "use client";
 
-import CustomPhotoEditor from '../components/photo-editor/CustomPhotoEditor'
+// import CustomPhotoEditor from '../components/temp/CustomPhotoEditor'
 import ImageEditor from './components/ImageEditor'
 
 export default function Page() {

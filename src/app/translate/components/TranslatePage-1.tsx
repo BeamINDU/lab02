@@ -2,21 +2,26 @@
 
 import React, { useState, useRef, useEffect, ChangeEvent } from "react";
 import Image from "next/image";
-import useToast from "../../hooks/useToast";
 import { useRouter, usePathname } from "next/navigation";
 import { useSelector, useDispatch } from 'react-redux';
-import { readFileAsBase64, convertBase64ToBlobUrl, convertFileToBase64 } from '../../utils/file';
+
+import useToast from "../../hooks/useToast";
+import useOcrWorker from '../../hooks/useOcrWorker';
+
+import { convertFileToBase64 } from '../../utils/file';
 import { convertFileSizeToMB } from "../../utils/format";
-import { SourceFileData, OcrRequest, TranslateRequest } from "../../interface/file"
+import { SourceFileData } from "../../interface/file"
+
 import { selectAllSourceFiles } from '../../redux/selectors/fileSelectors';
 import { addFiles, updateFile, clearFiles } from '../../redux/actions/fileActions';
-import { getOcrFiles, submitOcrRequest, submitTranslateRequest } from '@/app/actions/ocr';
+import { readTextFromFile } from '../../lib/readTextFromFile';
+import { translatedOcrResult } from '../../lib/translatedOcrResult';
 import { optionsLanguage } from '../../constants/languages';
+
 import SourceFileTable from "../../components/ocr/SourceFileTable";
 import PreviewFile from "../../components/ocr/PreviewFile";
 import PreviewData from "../../components/ocr/PreviewData";
 
-//------------------------------------------------
 
 const sampleFiles: SourceFileData[] = [
   {
@@ -68,20 +73,23 @@ const sampleFiles: SourceFileData[] = [
   }
 ];
 
-//------------------------------------------------
-
 export default function TranslatePage() {
   const pathname = usePathname();
   const router = useRouter();
   const dispatch = useDispatch();
+  const workerRef = useOcrWorker();
   const { toastSuccess, toastError } = useToast();
 
-  const fileRef = useRef<HTMLInputElement | null>(null);
   const sourceFiles = useSelector(selectAllSourceFiles);
+  const [inputLanguage, setInputLanguage] = useState("eng");
   const [outputLanguage, setOutputLanguage] = useState("eng");
 
+  const fileRef = useRef<HTMLInputElement | null>(null);
   const [filePreview, setFilePreview] = useState<SourceFileData | null>(null);
+
   const [processing, setProcessing] = useState(false);
+  const [progress, setProgress] = useState<number>(0);
+  const [loading, setLoading] = useState(false);
 
   const MODE = {
     BROWSE: "browse",
@@ -92,10 +100,6 @@ export default function TranslatePage() {
 
   const [activeButton, setActiveButton] = useState<ModeType>(MODE.BROWSE);
 
-  // useEffect(() => {
-  //   console.log("filePreview updated:", filePreview);
-  // }, [filePreview]);
-
   useEffect(() => {
     const currentPath = pathname;
     return () => {
@@ -104,7 +108,7 @@ export default function TranslatePage() {
       }
     };
   }, [pathname]);
- 
+
   // Handlers for Browse
   const handleBrowse = () => {
     if(activeButton === MODE.OCR) {
@@ -115,6 +119,14 @@ export default function TranslatePage() {
     fileRef.current?.click();
   };
 
+  // Handlers for Delete
+  // const handleDeleteFile = (index: number) => {
+  //   const updatedFiles = [...sourceFiles];
+  //   const removedFile = updatedFiles.splice(index, 1)[0];
+  //   setSourceFiles(updatedFiles);
+  //   toastSuccess(`Removed file: ${removedFile.name}`);
+  // };
+
   // Handlers for Edit
   const handleEdit = (id: number) => {
     const fileToUpdate = sourceFiles.find(file => file.id === id);
@@ -122,9 +134,8 @@ export default function TranslatePage() {
   
     if (filePreview?.id === fileToUpdate.id) {
       setFilePreview(null);
-      // setFilePreview(fileToUpdate);
+      setFilePreview({ ...fileToUpdate });
     }
-
   };
 
   // Handlers for Delete
@@ -135,16 +146,7 @@ export default function TranslatePage() {
     if (filePreview?.id === fileToDelete.id) {
       setFilePreview(null);
     }
-
   };
-
-  // Handlers for Delete
-  // const handleDeleteFile = (index: number) => {
-  //   const updatedFiles = [...sourceFiles];
-  //   const removedFile = updatedFiles.splice(index, 1)[0];
-  //   setSourceFiles(updatedFiles);
-  //   toastSuccess(`Removed file: ${removedFile.name}`);
-  // };
 
   // Handlers for PreviewFile
   const handlePreviewFile = (file: SourceFileData) => {
@@ -153,24 +155,25 @@ export default function TranslatePage() {
 
   // Handlers for FileChange
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
+    const selectedFiles = e.target.files;
 
-    if (files.length === 0) {
+    if (!selectedFiles || selectedFiles.length === 0) {
       toastError("No files selected.");
       return;
     }
 
-    const allowedExtensions = ["pdf", "png", "jpg", "jpeg"];
+    const allowedExtensions = ["pdf", "png", "jpg"];
     const maxSizeMB = 10;
-    const allResults: SourceFileData[] = [];
-    
+    const newFilesData: SourceFileData[] = [];
+    const selectedFilesArray: File[] = [...selectedFiles]
 
-    for (const file of files) {
+    for (let i = 0; i < selectedFilesArray.length; i++) {
+      const file = selectedFilesArray[i];
       const fileExtension = file.name.split(".").pop()?.toLowerCase() || "";
       const fileSizeInMB = convertFileSizeToMB(file.size);
 
       if (!allowedExtensions.includes(fileExtension)) {
-        toastError(`Invalid file type for ${file.name}. Only PDF, PNG, JPG, and JPEG are allowed.`);
+        toastError(`Invalid file type for ${file.name}. Only PDF, PNG, and JPG are allowed.`);
         continue;
       }
 
@@ -179,31 +182,32 @@ export default function TranslatePage() {
         continue;
       }
 
-      const base64Data = await readFileAsBase64(file);
+      const base64Image = fileExtension === "pdf" ? "" : await convertFileToBase64(file);
 
-      const rawResult: SourceFileData = {
-        id: Date.now(),
+      const newFileData: SourceFileData = {
+        id: selectedFilesArray.length + 1,
         fileName: file.name,
         fileType: file.type,
         fileSize: file.size,
-        base64Data: base64Data,
-        // blobUrl: convertBase64ToBlobUrl(base64Data),
+        base64Data: base64Image,
         blobUrl: URL.createObjectURL(file),
       };
 
-      allResults.push(rawResult);
+      newFilesData.push(newFileData);
     }
 
-    if (allResults.length > 0) {
-      dispatch(addFiles(allResults));
-      toastSuccess(`${allResults.length} file(s) added successfully.`);
+    if (newFilesData.length > 0) {
+      // const updatedFiles = [...sourceFiles, ...newFilesData];
+      // setSourceFiles(updatedFiles);
+      dispatch(addFiles(newFilesData));
+      toastSuccess(`${newFilesData.length} file(s) added successfully.`);
     }
 
     e.target.value = "";
   };
 
   // Handlers for OCR
-  const handleOcr = async () => {
+  const handleOcr = () => {
     if(activeButton === MODE.BROWSE) {
       dispatch(clearFiles());
       setFilePreview(null);
@@ -212,23 +216,8 @@ export default function TranslatePage() {
     
     dispatch(clearFiles());
 
-    // Call API
     if (sampleFiles.length > 0) {
-
       dispatch(addFiles(sampleFiles));
-
-      // const rawOrcResult: SourceFileData[] = await getOcrFiles();
-
-      // const translateResult = rawOrcResult.map((item) => ({
-      //   ...item,
-      //   blobUrl: item.base64Data ? convertBase64ToBlobUrl(item.base64Data) : '',
-      //   ocrResult: item.ocrResult?.map((page) => ({
-      //     ...page,
-      //     blobUrl: page.base64Image ? convertBase64ToBlobUrl(page.base64Image) : '',
-      //   })) ?? [],
-      // }));
-
-      // dispatch(addFiles(translateResult)); 
     }
   };
 
@@ -241,40 +230,32 @@ export default function TranslatePage() {
   
     try {
       setProcessing(true);
-      
-      if(activeButton === MODE.BROWSE) {
-
-        const ocrRequest: OcrRequest[] = sourceFiles?.map(file => ({
-          fileName: file.fileName,
-          fileType: file.fileType,
-          base64Data: file.base64Data,
-        })) ?? [];
   
-        const rawOrcResult: SourceFileData[] = await submitOcrRequest(ocrRequest);
+      for (let i = 0; i < sourceFiles.length; i++) {
+        let selectedFile = sourceFiles[i];
+  
+        if (!workerRef.current) {
+          toastError("OCR worker not ready.");
+          break;
+        }
+  
+        if (activeButton === MODE.BROWSE) {
+          const ocrReader = await readTextFromFile(workerRef.current, selectedFile, setProgress);
+          selectedFile = {
+            ...ocrReader,
+          };
+          dispatch(updateFile(selectedFile)); 
+        }
 
-        dispatch(clearFiles());
-        dispatch(addFiles(rawOrcResult)); 
+        const translated = await translatedOcrResult(selectedFile, setProgress);
+        selectedFile = {
+          ...selectedFile,
+          ocrResult: translated.ocrResult,
+        };
+        dispatch(updateFile(selectedFile));
       }
-
-      const translateRequest: TranslateRequest[] = sourceFiles?.map(file => ({
-        id: file.id ?? 0,
-      })) ?? [];
-
-      const rawTranslateResult: SourceFileData[] = await submitTranslateRequest(translateRequest);
-
-      dispatch(clearFiles());
-      
-      const translateResult = rawTranslateResult.map((item) => ({
-        ...item,
-        blobUrl: item.base64Data ? convertBase64ToBlobUrl(item.base64Data) : '',
-        ocrResult: item.ocrResult?.map((page) => ({
-          ...page,
-          blobUrl: page.base64Image ? convertBase64ToBlobUrl(page.base64Image) : '',
-        })) ?? [],
-      }));
-
-      dispatch(addFiles(translateResult)); 
-
+  
+      await new Promise(resolve => setTimeout(resolve, 1000));
       toastSuccess("OCR Processing completed.");
       router.push('/translate/process');
     } catch (error) {
@@ -286,16 +267,16 @@ export default function TranslatePage() {
   };
 
   return (
-    <div className="flex flex-col p-2 h-full">
+    <div className="flex flex-col p-2">
       {/* Source Button && Language Selection */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4 h-full">
         {/* BROWSE && OCR Button */}
         <div className="flex flex-col">
-          <div className="mb-4 flex flex-col sm:flex-row sm:space-x-2 space-y-2 sm:space-y-0 w-full">
+          <div className="mb-4 flex space-x-2 w-full">
             <button
               onClick={handleBrowse}
-              className={`font-semibold px-4 py-2 rounded-md text-sm text-white w-full sm:w-24 ${
-                activeButton === MODE.OCR
+              className={`font-semibold px-4 py-2 rounded-md text-sm w-24 text-white ${
+                (activeButton === MODE.OCR)
                   ? "bg-[#818893] hover:bg-gray-500"
                   : "bg-[#0369A1] hover:bg-blue-600"
               }`}
@@ -304,8 +285,8 @@ export default function TranslatePage() {
             </button>
             <button
               onClick={handleOcr}
-              className={`font-semibold px-4 py-2 rounded-md text-sm text-white w-full sm:w-24 ${
-                activeButton === MODE.BROWSE
+              className={`font-semibold px-4 py-2 rounded-md text-sm w-24 text-white ${
+                (activeButton === MODE.BROWSE)
                   ? "bg-[#818893] hover:bg-gray-500"
                   : "bg-[#0369A1] hover:bg-blue-600"
               }`}
@@ -323,11 +304,29 @@ export default function TranslatePage() {
             />
           </div>
         </div>
-        {/* Output Language & Start Process */}
+        {/* Input Language & Output Language  & Start Process Selection */}
         <div className="flex flex-col">
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-4 mb-4 w-full">
-            {/* Output Language */}
-            <div className="flex items-center space-x-2 w-full md:w-2/3">
+          <div className="flex items-center justify-between mb-4 w-full gap-4">
+             {/* Input Language */}
+            {/* <div className="flex items-center space-x-2 w-full md:w-2/5">
+              <label className="text-sm font-medium whitespace-nowrap" htmlFor="language-select">
+                Input Language
+              </label>
+              <select
+                id="language-select"
+                className="px-4 py-2 border rounded-md w-full text-sm"
+                value={inputLanguage}
+                onChange={(e) => setInputLanguage(e.target.value)}
+              >
+                {optionsLanguage.map((lang, index) => (
+                  <option key={index} value={lang.value}>
+                    {lang.label}
+                  </option>
+                ))}
+              </select>
+            </div> */}
+             {/* IOutput Language */}
+            <div className="flex items-center space-x-2 w-4/5">
               <label className="text-sm font-medium whitespace-nowrap" htmlFor="language-select">
                 Output Language
               </label>
@@ -344,11 +343,10 @@ export default function TranslatePage() {
                 ))}
               </select>
             </div>
-
-            {/* Start Process */}
+            {/* Start Process button */}
             <button
               onClick={handleStartProcess}
-              className="text-white bg-[#0369A1] hover:bg-blue-600 font-semibold px-4 py-2 rounded-md text-sm w-full md:w-auto md:ml-auto disabled:opacity-50 disabled:cursor-not-allowed"
+              className="text-white bg-[#0369A1] hover:bg-blue-600 font-semibold px-4 py-2 rounded-md text-sm w-38 ml-auto disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={processing}
             >
               {processing ? `Processing...` : `Start Process`}
@@ -356,45 +354,54 @@ export default function TranslatePage() {
           </div>
         </div>
       </div>
-
-      {/* Source File Section && Preview Section */}
-      <div className="h-full flex flex-col">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 h-full">
-          {/* SourceFileTable Section */}
-          <div className="border rounded-xl shadow-md p-4 flex flex-col h-full">
-            <h2 className="text-lg font-bold text-black mb-2">Source File</h2>
-            <div className="flex-1 max-h-[76vh] overflow-auto">
-              <SourceFileTable 
-                sourceFiles={sourceFiles} 
-                onPreview={handlePreviewFile} 
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-              />
-            </div>
-          </div>
-          {/* Text Preview Section */}
-          <div className="border rounded-xl shadow-md p-4 flex flex-col h-full">
-            <div className="flex-1 overflow-auto">
-              {activeButton === MODE.BROWSE && (
-                <PreviewFile 
-                  key={filePreview?.id ?? null} 
-                  url={filePreview?.blobUrl} 
-                  type={filePreview?.fileType} 
-                />
-              )}
-              {activeButton === MODE.OCR && (
-                filePreview?.ocrResult?.map(ocr => (
-                  <div key={ocr.page} className="mb-5">
-                    <div className="text-xs text-gray-500">Page: {ocr.page}</div>
-                    <PreviewData data={ocr.extractedText ?? ""} />
-                  </div>
-                ))
-              )}
-            </div>
+      {/* Source File && Preview Data Section */}
+      <div className="grid grid-cols-2 gap-4 h-full">
+        {/* Source File */}
+        <div className="flex flex-col">
+          <div className="">
+            <h2 className="text-black text-lg font-bold">Source File</h2>
+            <SourceFileTable
+              sourceFiles={sourceFiles}
+              onPreview={handlePreviewFile}
+              onDelete={handleDelete}
+              onEdit={handleEdit}
+            />
           </div>
         </div>
+        {/* Preview File && Preview Data Section */}
+        <div className="flex-1">
+          <h2 className="text-black text-lg font-bold">Preview</h2>
+          {activeButton === MODE.BROWSE && (
+            <div className="bg-white rounded-lg shadow-md p-4 flex items-center justify-center h-[calc(100vh-200px)]">
+              {/* Preview File */}
+              <PreviewFile url={filePreview?.blobUrl} type={filePreview?.fileType} />
+            </div>
+          )}
+          {activeButton === MODE.OCR && (
+            <div className="h-[calc(100vh-227px)]">
+              <div className="overflow-hidden max-h-[76vh] w-full h-full flex justify-center rounded-lg">
+                {filePreview ? (
+                  <div className="h-[76vh] w-full overflow-y-auto p-4 space-y-1 bg-white">
+                    {filePreview?.ocrResult?.map(ocr => (
+                      <div key={ocr.page} className="mb-5">
+                        <div className="text-xs text-gray-500">Page: {ocr.page}</div>
+                        {/* Preview Data */}
+                        <PreviewData data={ocr.extractedText ?? ""} />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="h-[76vh] w-full flex justify-center bg-white">
+                    <p className="mt-4">
+                      No file selected for preview
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-
       {/* processing Section */}
       {processing && (
         <div className="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center z-50">
@@ -411,9 +418,25 @@ export default function TranslatePage() {
                 className="mb-1 animate-spin"
               />
             </div>
+            {/* Progress Bar */}
+            {/* <div className="relative w-full bg-gray-200 rounded-full">
+              <div
+                className="bg-blue-500 h-4 rounded-full"
+                style={{ width: `${progress * 100}%` }}
+              ></div>
+            </div>
+            <div className="text-sm text-gray-500 mt-2">{Math.round(progress * 100)}%</div> */}
           </div>
         </div>
       )}
+      {/* {processing && (
+        <div className="flex items-center justify-center mt-10">
+          <div className="progress-bar">
+            {progress && <progress value={progress * 100} max="100">{progress * 100}%</progress>}
+            {progress && <p>{Math.round(progress * 100)}% Complete</p>}
+          </div>
+        </div>
+      )} */}
     </div>
   );
 }

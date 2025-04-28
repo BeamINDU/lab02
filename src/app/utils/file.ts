@@ -1,3 +1,16 @@
+export const readFileAsBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      const base64 = result.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
+
 export const convertFileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -51,15 +64,10 @@ export const convertBase64ToBlobUrl = (base64: string, mimeType = 'image/png'): 
   }
 };
 
-export const readFileAsBase64 = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const result = reader.result as string;
-      const base64 = result.split(',')[1];
-      resolve(base64);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-};
+export const convertBlobToFile = async (blobUrl: string, fileName: string , fileType: string): Promise<File> => {
+  const response = await fetch(blobUrl ?? "");
+  const blob = await response.blob();
+
+  const file = new File([blob], fileName, { type: fileType });
+  return file;
+}

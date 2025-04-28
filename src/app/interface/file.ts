@@ -5,6 +5,10 @@ export interface OcrRequest {
   base64Data: string;
 }
 
+export interface TranslateRequest {
+  id: number;
+}
+
 export interface SourceFileData {
   id?: number;
   // fileId?: number;

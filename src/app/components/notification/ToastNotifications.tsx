@@ -17,7 +17,7 @@ export default function ToastNotifications() {
       pauseOnHover
       style={{
         marginTop: '-10px',
-        marginRight: '-7px',
+        marginRight: '5px',
       }}
     />
   );

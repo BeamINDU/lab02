@@ -6,7 +6,7 @@ import { SourceFileData } from "../../interface/file"
 import { useSelector } from 'react-redux';
 import { selectAllSourceFiles } from '../../redux/selectors/fileSelectors';
 import useToast from "../../hooks/useToast";
-import PreviewFile from "./PreviewFile";
+import PreviewFile from "../../components/ocr/PreviewFile";
 import PreviewData from "../../components/ocr/PreviewData";
 import ExportModal from "./ExportModal";
 import SaveModal from "./SaveModal";

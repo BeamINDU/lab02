@@ -15,18 +15,18 @@ export default function ProcessPage() {
   const dispatch = useDispatch();
   const { toastSuccess, toastError } = useToast();
 
-  const files = useSelector(selectAllSourceFiles);
-  const [sourceFiles, setSourceFiles] = useState<SourceFileData[]>([]);
+  const sourceFiles = useSelector(selectAllSourceFiles);
+  const [files, setFiles] = useState<SourceFileData[]>([]);
   const [selectedSourceFile, setSelectedSourceFile] = useState<number>();
   
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
 
   useEffect(() => {
-    if (files.length > 0) {
-      setSourceFiles(files);
+    if (sourceFiles.length > 0) {
+      setFiles(sourceFiles);
     }
-  }, [files]);
+  }, [sourceFiles]);
 
   const handleClear = () => {
     dispatch(clearFiles());
@@ -53,12 +53,13 @@ export default function ProcessPage() {
   const handleExportTxt = (selectedFiles: SourceFileData[] | null) => {
     if (selectedFiles) {
       selectedFiles.forEach((file) => {
+        const fileNameWithoutExtension = file.fileName.split('.').slice(0, -1).join('.');
         const content = file.ocrResult?.map(r => r.translateText).join('\n\n') || '';
         const blob = new Blob([content], { type: "text/plain" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `${file.fileName}.txt`;
+        a.download = `${fileNameWithoutExtension}.txt`;
         a.click();
         URL.revokeObjectURL(url);
       });
@@ -75,7 +76,7 @@ export default function ProcessPage() {
   };
 
   return (
-    <div className="rounded-lg p-4">
+    <div className="flex flex-col p-2">
       {/* Back & Save & Export Button*/}
       <div className="grid grid-cols-2 gap-4 h-full">
         <div className="flex flex-col">
@@ -96,10 +97,9 @@ export default function ProcessPage() {
           </div>
         </div>
       </div>
-      {/* sourceFiles Selection */}
-      <div className="grid grid-cols-2 gap-6">
-        {/* source Files */}
-        <div className="flex items-center space-x-2 w-full">
+      {/* SourceFiles Selection */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="flex items-center w-full">
           <select
             id="files-select"
             className="px-4 py-2 border rounded-md w-full"
@@ -107,7 +107,7 @@ export default function ProcessPage() {
             onChange={(e) => setSelectedSourceFile(Number(e.target.value))}
           >
             <option value={-1}>--- Please select source file ---</option>
-            {sourceFiles?.map((file) => (
+            {files?.map((file) => (
               <option key={file.id} value={file.id}>
                 {file.fileName}
               </option>
@@ -115,61 +115,44 @@ export default function ProcessPage() {
           </select>
         </div>
       </div>
-      {/* ExtractedText and TranslateText Sections */}
+      {/* Source and Result Sections */}
       {selectedSourceFile && (
-        <>
-          <div className="grid grid-cols-2 gap-6 mt-2">
-            <h2 className="text-black text-lg font-bold flex items-center justify-center">Source</h2>
-            <h2 className="text-black text-lg font-bold flex items-center justify-center">Result</h2>
-          </div>
-          <div className="h-[calc(100vh-247px)] overflow-y-auto -mr-4">
-            {sourceFiles
-                .filter((item) => item.id === selectedSourceFile)
-                .map((item, index) => (
-                  <div className="mb-2" key={index}>
-                    {item.ocrResult?.map((page, pageIndex) => (
-                      <div key={pageIndex}>
-                        {/* Page Header */}
-                        <h2 className="text-lg font-semibold">Page {page.page}</h2>
-                        <hr className="mb-4 border-gray-300" />
-  
-                        <div className="grid grid-cols-2 gap-4 mb-2">
-                          {/* Source Section */}
-                          <div className="flex-1">
-                            <div className="bg-white rounded-lg shadow-md h-[calc(100vh-297px)] overflow-y-auto">
-                              {page ? (
-                                <PreviewData data={page.extractedText ?? ""} />
-                              ) : (
-                                <p className="text-gray-500">No file selected</p>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Result Section */}
-                          <div>
-                            <div className="mr-4 bg-white rounded-lg shadow-md h-[calc(100vh-297px)] overflow-y-auto">
-                              {page ? (
-                                <PreviewData data={page.translateText ?? ""} />
-                              ) : (
-                                <p className="text-gray-500">No file selected</p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
+        <div className="mt-4">
+          {files
+            .filter((item) => item.id === selectedSourceFile)
+            .map((item) => (
+              <div key={item.id} className="mb-0">
+                {item?.ocrResult?.map((page) => (
+                  <div
+                    key={`${item.id}-${page.page}`}
+                    className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start mb-5"
+                  >
+                    {/* Image Section */}
+                    <div className="border rounded-xl shadow-md p-4 h-full flex flex-col">
+                      <div className="text-sm font-medium text-gray-500 mb-2">Page {page.page}</div>
+                      <div className="flex-1 h-full max-h-[71vh] overflow-auto">
+                        <PreviewData data={page.extractedText ?? ""} />
                       </div>
-                    ))}
+                    </div>
+                    {/* Text Preview Section */}
+                    <div className="border rounded-xl shadow-md p-4 h-full flex flex-col">
+                      <div className="text-sm font-medium text-gray-500 mb-2">Page {page.page}</div>
+                      <div className="flex-1 h-full max-h-[71vh] overflow-auto">
+                        <PreviewData data={page.translateText ?? ""} />
+                      </div>
+                    </div>
                   </div>
-              ))}
-          </div>
-        </>
+                ))}
+              </div>
+          ))}
+        </div>
       )}
 
       {/* Save Modal */}
       <SaveModal
         isOpen={isSaveModalOpen}
         onClose={handleCloseSaveModal}
-        sourceFiles={sourceFiles}
+        sourceFiles={files}
         onSave={handleSave}
       />
 
@@ -177,12 +160,10 @@ export default function ProcessPage() {
       <ExportModal
         isOpen={isExportModalOpen}
         onClose={handleCloseExportModal}
-        sourceFiles={sourceFiles}
+        sourceFiles={files}
         onExportTxt={handleExportTxt}
         onSendExternal={handleSendExternal}
       />
-      
     </div>
-
   );
 }

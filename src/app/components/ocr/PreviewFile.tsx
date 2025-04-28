@@ -22,11 +22,11 @@ export default function PreviewFile({ type, url }: PreviewFileProps) {
               type="application/pdf"
               className="w-full h-full object-contain"
             >
-              <p className="max-h-[90vh] flex justify-center">Unsupported file type</p>
+              <p className="max-h-[90vh] flex justify-center text-sm font-medium text-gray-500">Unsupported file type</p>
             </object>
           )
         ) : (
-          <p className="max-h-[90vh] flex justify-center">No file selected for preview</p>
+          <p className="max-h-[90vh] flex justify-center text-sm font-medium text-gray-500">No file selected for preview</p>
         )}
         {/* </div> */}
     </>

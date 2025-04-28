@@ -15,6 +15,7 @@ export interface PhotoEditorTranslations {
 }
 
 export interface PhotoEditorProps {
+  // id: number;
 	/**
 	 * The input image file to be edited.
 	 */

@@ -2,7 +2,8 @@ import "@/styles/globals.css";
 import { ReactNode } from "react";
 import Providers from "./providers";
 import Layout from "@/app/components/Layout";
-// import Layout from "./components/layout/MainLayout";
+// import Layout from "@/app/components/layout/AppLayout";
+// import LoginLayout from '@/app/components/layout/LoginLayout';
 
 export const metadata = {
   title: "OCR",

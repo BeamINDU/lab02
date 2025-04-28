@@ -1,384 +1,236 @@
-import { useEffect, useRef, useState, ChangeEvent } from 'react';
+import { useEffect, ChangeEvent } from 'react';
 import { RotateCcw, FlipHorizontal, FlipVertical, ZoomIn, ZoomOut, Crop } from 'lucide-react';
 import { PhotoEditorProps } from './interface';
 import { usePhotoEditor } from '../../hooks/usePhotoEditor';
 
 export const PhotoEditor: React.FC<PhotoEditorProps> = ({
-	file,
-	onSaveImage,
-	allowColorEditing = true,
-	allowFlip = true,
-	allowRotate = true,
-	allowZoom = true,
+  file,
+  onSaveImage,
+  allowColorEditing = true,
+  allowFlip = true,
+  allowRotate = true,
+  allowZoom = true,
   allowCrop = true,
-	downloadOnSave,
-	open,
-	onClose,
-	modalHeight,
-	modalWidth,
-	canvasHeight,
-	canvasWidth,
-	maxCanvasHeight,
-	maxCanvasWidth,
-	labels = {
-		close: 'Close',
-		save: 'Save',
-		rotate: 'Rotate',
-		brightness: 'Brightness',
-		contrast: 'Contrast',
-		saturate: 'Saturate',
-		grayscale: 'Grayscale',
-		reset: 'Reset photo',
-		flipHorizontal: 'Flip photo horizontally',
-		flipVertical: 'Flip photo vertically',
-		zoomIn: 'Zoom in',
-		zoomOut: 'Zoom out',
+  downloadOnSave,
+  open,
+  onClose,
+  modalHeight,
+  modalWidth,
+  canvasHeight,
+  canvasWidth,
+  labels = {
+    close: 'Close',
+    save: 'Save',
+    rotate: 'Rotate',
+    brightness: 'Brightness',
+    contrast: 'Contrast',
+    saturate: 'Saturate',
+    grayscale: 'Grayscale',
+    reset: 'Reset photo',
+    flipHorizontal: 'Flip photo horizontally',
+    flipVertical: 'Flip photo vertically',
+    zoomIn: 'Zoom in',
+    zoomOut: 'Zoom out',
     crop: 'Crop',
-	}
+  }
 }) => {
-  // const modalHeaderButtonClasses = 'text-gray-900 bg-white border border-gray-300 ml-2 focus:outline-none hover:bg-gray-100 focus:ring-4 focus:ring-gray-100 font-medium rounded-full text-sm px-2 py-1 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700';
-
   const {
-		canvasRef,
-		brightness,
-		setBrightness,
-		contrast,
-		setContrast,
-		saturate,
-		setSaturate,
-		grayscale,
-		setGrayscale,
-		rotate,
-		setRotate,
-		flipHorizontal,
-		setFlipHorizontal,
-		flipVertical,
-		setFlipVertical,
-		isDragging,
-		handlePointerDown,
-		handlePointerUp,
-		handlePointerMove,
-		handleWheel,
-		handleZoomIn,
-		handleZoomOut,
+    canvasRef,
+    brightness,
+    setBrightness,
+    contrast,
+    setContrast,
+    saturate,
+    setSaturate,
+    grayscale,
+    setGrayscale,
+    rotate,
+    setRotate,
+    flipHorizontal,
+    setFlipHorizontal,
+    flipVertical,
+    setFlipVertical,
+    isDragging,
+    handlePointerDown,
+    handlePointerUp,
+    handlePointerMove,
+    handleWheel,
+    handleZoomIn,
+    handleZoomOut,
     handleCrop,
-		resetFilters,
-		downloadImage,
-		generateEditedFile,
-		applyFilter
-	} = usePhotoEditor({ file });
+    resetFilters,
+    downloadImage,
+    generateEditedFile,
+    applyFilter
+  } = usePhotoEditor({ file });
 
-	if (!file) return;
+  if (!file) return null;
 
   /* eslint-disable react-hooks/rules-of-hooks */
-	useEffect(() => {
-		if (open) {
+  useEffect(() => {
+    if (open) {
       resetFilters();
       applyFilter();
     }
-	}, [open]);
+  }, [open]);
   /* eslint-enable react-hooks/rules-of-hooks */
 
-	const handleInputChange = (
-		event: ChangeEvent<HTMLInputElement>,
-		setValue: React.Dispatch<React.SetStateAction<number>>,
-		min: number,
-		max: number
-	) => {
-		const value = parseInt(event.target?.value);
-		if (!isNaN(value) && value >= min && value <= max) {
-			setValue(value);
-		}
-	};
+ const handleInputChange = (
+    event: ChangeEvent<HTMLInputElement>,
+    setValue: React.Dispatch<React.SetStateAction<number>>,
+    min: number,
+    max: number
+  ) => {
+    const value = parseInt(event.target?.value);
+    if (!isNaN(value) && value >= min && value <= max) {
+      setValue(value);
+    }
+  };
 
-	const renderInputs = [
-		{
-			name: labels.rotate,
-			value: rotate,
-			setValue: setRotate,
-			min: -180,
-			max: 180,
-			type: 'range',
-			id: 'rotateInput',
-			'aria-labelledby': 'rotateInputLabel',
-			hide: !allowRotate,
-		},
-		{
-			name: labels.brightness,
-			value: brightness,
-			setValue: setBrightness,
-			min: 0,
-			max: 200,
-			type: 'range',
-			id: 'brightnessInput',
-			'aria-labelledby': 'brightnessInputLabel',
-			hide: !allowColorEditing,
-		},
-		{
-			name: labels.contrast,
-			value: contrast,
-			setValue: setContrast,
-			min: 0,
-			max: 200,
-			type: 'range',
-			id: 'contrastInput',
-			'aria-labelledby': 'contrastInputLabel',
-			hide: !allowColorEditing,
-		},
-		{
-			name: labels.saturate,
-			value: saturate,
-			setValue: setSaturate,
-			min: 0,
-			max: 200,
-			type: 'range',
-			id: 'saturateInput',
-			'aria-labelledby': 'saturateInputLabel',
-			hide: !allowColorEditing,
-		},
-		{
-			name: labels.grayscale,
-			value: grayscale,
-			setValue: setGrayscale,
-			min: 0,
-			max: 100,
-			type: 'range',
-			id: 'grayscaleInput',
-			'aria-labelledby': 'grayscaleInputLabel',
-			hide: !allowColorEditing,
-		},
-	];
+  const renderInputs = [
+    { name: labels.rotate, value: rotate, setValue: setRotate, min: -180, max: 180, type: 'range', hide: !allowRotate },
+    { name: labels.brightness, value: brightness, setValue: setBrightness, min: 0, max: 200, type: 'range', hide: !allowColorEditing },
+    { name: labels.contrast, value: contrast, setValue: setContrast, min: 0, max: 200, type: 'range', hide: !allowColorEditing },
+    { name: labels.saturate, value: saturate, setValue: setSaturate, min: 0, max: 200, type: 'range', hide: !allowColorEditing },
+    { name: labels.grayscale, value: grayscale, setValue: setGrayscale, min: 0, max: 100, type: 'range', hide: !allowColorEditing },
+  ];
 
-	const closeEditor = () => {
-		resetFilters();
-		if (onClose) {
-			onClose();
-		}
-	};
+  const closeEditor = () => {
+    resetFilters();
+    onClose?.();
+  };
 
-	const saveImage = async () => {
-		if (downloadOnSave) {
-			downloadImage();
-		}
-		const editedFile = await generateEditedFile();
-
+  const saveImage = async () => {
+    if (downloadOnSave) {
+      downloadImage();
+    }
+    const editedFile = await generateEditedFile();
     if (editedFile) {
       onSaveImage(editedFile);
     }
-  
-    if (onClose) {
-      onClose();
-    }
-	};
+    onClose?.();
+  };
 
-	return (
-		<>
-			{open && (
-				<>
-					<div className='photo-editor-main justify-center items-center flex overflow-auto fixed inset-0 z-50'>
-						<div
-							style={{
-								// height: modalHeight ?? '38rem',
-								// width: modalWidth ?? '40rem'
-                height: modalHeight ?? '53rem',
-								width: modalWidth ?? '100rem'
-							}}
-							id='photo-editor-modal'
-              className='relative rounded-lg shadow-lg max-sm:w-[22rem] bg-white'
-							// className='relative rounded-lg shadow-lg max-sm:w-[22rem] bg-white dark:bg-[#1e1e1e]'
-						>
-							<div className='flex justify-end p-2 rounded-t'>
-								<button
-                  className="px-3 py-1 text-md rounded transition bg-gray-300 text-gray-500 ml-2"
-									// className={modalHeaderButtonClasses}
-									onClick={closeEditor}
-									type='button'
-								>
-									{labels.close}
-								</button>
-								<button
-                  className="px-3 py-1 text-md rounded transition text-white bg-[#0369A1] hover:bg-blue-600 ml-2"
-									// className={modalHeaderButtonClasses}
-									onClick={() => saveImage()}
-									type='button'
-								>
-									{labels.save}
-								</button>
-                {/* <button onClick={closeEditor} className="text-xl text-gray-500 hover:text-gray-800">
+  return (
+    <>
+      {open && (
+        <>
+          {/* Overlay */}
+          <div className="fixed inset-0 bg-black bg-opacity-75 z-40" />
+
+          {/* Modal */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="bg-white rounded-xl shadow-2xl flex flex-col w-full max-w-7xl max-h-[90vh] overflow-hidden"
+              style={{ width: modalWidth ?? '90vw', height: modalHeight ?? '90vh' }}
+            >
+              {/* Header */}
+              <div className="flex justify-end gap-2 mt-2 mr-4">
+                <button title={labels.close} onClick={closeEditor} className="text-xl text-gray-500 hover:text-gray-800">
                   ✕
-                </button> */}
-							</div>
-							<div className='p-2'>
-								<div className='flex flex-col'>
-									<canvas
-										style={{
-											width: canvasWidth ?? 'auto',
-											height: canvasHeight ?? 'auto',
-											maxHeight: maxCanvasHeight ?? '40rem',
-											maxWidth: maxCanvasWidth ?? '70rem'
-										}}
-                    className={`canvas border-gray-700 object-fit mx-auto ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-										// className={`canvas border dark:border-gray-700 object-fit mx-auto ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-										id='canvas'
-										ref={canvasRef}
-										onPointerDown={handlePointerDown}
-										onPointerMove={handlePointerMove}
-										onPointerUp={handlePointerUp}
-										onPointerLeave={handlePointerUp}
-										onWheel={handleWheel}
-										width={typeof canvasWidth === 'number' ? canvasWidth : undefined}
-										height={typeof canvasHeight === 'number' ? canvasHeight : undefined}
-									/>
+                </button>
+              </div>
 
-									<div className='items-center flex m-1 flex-col'>
-										<div className='flex flex-col bottom-12 gap-1 mt-4 max-sm:w-72 w-11/12 absolute '>
-											{renderInputs.map(
-												(input) =>
-													!input.hide && (
-														<div key={input.name} className='flex flex-row items-center'>
-															<label
-																id={`${input.name}InputLabel`}
-                                className='text-xs font-medium text-gray-900 w-10'
-																// className='text-xs font-medium text-gray-900 dark:text-white w-10'
-															>
-																{input.name[0].toUpperCase() + input.name.slice(1)}:{' '}
-															</label>
-															<input
-																id={input.id}
-																aria-labelledby={input['aria-labelledby']}
-																type={input.type}
-																value={input.value}
-																step='1'
-																onChange={(e) =>
-																	handleInputChange(e, input.setValue, input.min, input.max)
-																}
-																min={input.min}
-																max={input.max}
-                                className='ml-[1.7rem] w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer range-sm'
-																// className='ml-[1.7rem] w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer range-sm dark:bg-gray-700'
-															/>
-															<input
-																type='number'
-																aria-labelledby={input['aria-labelledby']}
-																value={input.value}
-																onChange={(e) =>
-																	handleInputChange(e, input.setValue, input.min, input.max)
-																}
-																min={input.min}
-																max={input.max}
-                                className='w-14 ml-2 rounded-md text-right bg-gray-100 text-black'
-																// className='w-14 ml-2 rounded-md text-right bg-gray-100 text-black dark:bg-gray-700 dark:text-white'
-															/>
-														</div>
-													)
-											)}
-										</div>
-									</div>
+              {/* Body */}
+              <div className="flex flex-col flex-1 overflow-hidden">
+                {/* Canvas */}
+                <div className="flex-1 flex items-center justify-center bg-gray-50 overflow-hidden">
+                  <canvas
+                    id="canvas"
+                    ref={canvasRef}
+                    onPointerDown={handlePointerDown}
+                    onPointerMove={handlePointerMove}
+                    onPointerUp={handlePointerUp}
+                    onPointerLeave={handlePointerUp}
+                    onWheel={handleWheel}
+                    width={typeof canvasWidth === 'number' ? canvasWidth : undefined}
+                    height={typeof canvasHeight === 'number' ? canvasHeight : undefined}
+                    className={`max-w-full max-h-full object-contain ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                  />
+                </div>
 
-                  <div className='flex justify-center'>
-										<div className='mb-1 absolute bottom-0 mt-2'>
-											<button
-												title={labels.reset}
-                        className='mx-1 focus:ring-2 focus:ring-gray-300 rounded-md p-1'
-												// className='mx-1 focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-700 rounded-md p-1'
-												onClick={resetFilters}
-												aria-label={labels.reset}
-												type='button'
-											>
-                        {/* <RotateCcw className="w-6 h-6 text-white dark:text-slate-200" /> */}
-                        <RotateCcw className="w-6 h-6 text-slate-500" />
-											</button>
+                {/* Reset / Flip / Zoom */}
+                <div className="flex items-center justify-center gap-2 px-4 mt-2">
+                  <button title={labels.reset} onClick={resetFilters} className="p-2 rounded hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    <RotateCcw className="w-6 h-6 text-gray-700" />
+                  </button>
 
-                      {allowCrop && (
-                        <button
-                          title={labels.crop}
-                          className='mx-1 focus:ring-2 focus:ring-gray-300 rounded-md p-1'
-                          onClick={handleCrop}
-                          aria-label={labels.crop}
-                          type='button'
-                        >
-                          <Crop className="w-6 h-6 text-slate-500" />
-                        </button>
-                      )}
-                      
-											{allowFlip && (
-												<div className='inline-block'>
-													<button
-														className='mx-1 focus:ring-2 focus:ring-gray-300 rounded-md p-1'
-														onClick={() => setFlipHorizontal(!flipHorizontal)}
-														type='button'
-														title={labels.flipHorizontal}
-														aria-label={labels.flipHorizontal}
-													>
-                            <FlipHorizontal className="w-6 h-6 text-slate-500" />
-													</button>
-													<button
-														className='mx-1 focus:ring-2 focus:ring-gray-300 rounded-md p-1'
-														onClick={() => setFlipVertical(!flipVertical)}
-														type='button'
-														title={labels.flipVertical}
-														aria-label={labels.flipVertical}
-													>
-														<FlipVertical className="w-6 h-6 text-slate-500" />
-													</button>
-												</div>
-											)}
+                  {/* {allowCrop && (
+                    <button title={labels.crop} onClick={handleCrop} className="p-2 rounded hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                      <Crop className="w-6 h-6 text-gray-700" />
+                    </button>
+                  )} */}
 
-											{allowZoom && (
-												<div className='inline-block'>
-													<button
-														type='button'
-														className='mx-1 focus:ring-2 focus:ring-gray-300 rounded-md p-1'
-														onClick={handleZoomIn}
-														title={labels.zoomIn}
-														aria-label={labels.zoomIn}
-													>
-														<ZoomIn className="w-6 h-6 text-slate-500" />
-													</button>
-													<button
-														type='button'
-														className='mx-1 focus:ring-2 focus:ring-gray-300 rounded-md p-1'
-														onClick={handleZoomOut}
-														title={labels.zoomOut}
-														aria-label={labels.zoomOut}
-													>
-														<ZoomOut className="w-6 h-6 text-slate-500" />
-													</button>
-												</div>
-											)}
-										</div>
-									</div>
+                  {allowFlip && (
+                    <>
+                      <button title={labels.flipHorizontal} onClick={() => setFlipHorizontal(!flipHorizontal)} className="p-2 rounded hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <FlipHorizontal className="w-6 h-6 text-gray-700" />
+                      </button>
+                      <button title={labels.flipVertical} onClick={() => setFlipVertical(!flipVertical)} className="p-2 rounded hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <FlipVertical className="w-6 h-6 text-gray-700" />
+                      </button>
+                    </>
+                  )}
 
-								</div>
-							</div>
-              
-              {/* <div className='flex justify-center'>
-                <div className='mb-3 absolute bottom-0 mt-1'>
+                  {allowZoom && (
+                    <>
+                      <button title={labels.zoomIn} onClick={handleZoomIn} className="p-2 rounded hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <ZoomIn className="w-6 h-6 text-gray-700" />
+                      </button>
+                      <button title={labels.zoomOut} onClick={handleZoomOut} className="p-2 rounded hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <ZoomOut className="w-6 h-6 text-gray-700" />
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {/* Sliders */}
+                <div className="px-4 space-y-1 overflow-y-auto ">
+                  {renderInputs.map((input) =>
+                    !input.hide ? (
+                      <div key={input.name} className="flex items-center gap-2">
+                        <label className="text-xs font-medium w-24 truncate">{input.name}:</label>
+                        <input
+                          type="range"
+                          value={input.value}
+                          onChange={(e) => handleInputChange(e, input.setValue, input.min, input.max)}
+                          min={input.min}
+                          max={input.max}
+                          className="flex-1 h-1 accent-blue-500 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                        />
+                        <input
+                          type="number"
+                          value={input.value}
+                          onChange={(e) => handleInputChange(e, input.setValue, input.min, input.max)}
+                          min={input.min}
+                          max={input.max}
+                          className="w-14 rounded-md border border-gray-300 text-right px-2 py-1 text-xs"
+                        />
+                      </div>
+                    ) : null
+                  )}
+                </div>
+
+                {/* Footer: Cancel / Save */}
+                <div className="flex justify-center gap-4 mb-4 mt-2">
                   <button
-                    className="px-3 py-1 text-md rounded transition bg-gray-300 text-gray-500 ml-2"
-                    // className={modalHeaderButtonClasses}
+                    className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-md text-sm font-semibold w-24"
                     onClick={closeEditor}
-                    type='button'
                   >
                     {labels.close}
                   </button>
                   <button
-                    className="px-3 py-1 text-md rounded transition text-white bg-[#0369A1] hover:bg-blue-600 ml-2"
-                    // className={modalHeaderButtonClasses}
-                    onClick={() => saveImage()}
-                    type='button'
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-semibold w-24"
+                    onClick={saveImage}
                   >
                     {labels.save}
                   </button>
                 </div>
-              </div> */}
-
-						</div>
-            
-					</div>
-					<div className='opacity-75 fixed inset-0 z-40 bg-black'></div>
-				</>
-			)}
-		</>
-	);
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </>
+  );
 };

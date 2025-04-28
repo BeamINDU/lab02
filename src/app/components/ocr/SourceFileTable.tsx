@@ -1,158 +1,149 @@
 import React, { useState } from "react";
+import { Eye, Pencil, Trash2 } from 'lucide-react';
 import useToast from "../../hooks/useToast";
+import { useDispatch, useSelector } from 'react-redux';
+// import { selectAllSourceFiles } from '../../redux/selectors/fileSelectors';
+import { updateFile, removeFile } from '../../redux/actions/fileActions';
+import { readFileAsBase64, convertBase64ToBlobUrl, convertBlobToFile } from '../../utils/file';
 import { SourceFileData } from "../../interface/file";
-import { PhotoEditor } from '../photo-editor/PhotoEditor'
-// import ImageEditModal, { AdjustmentValues } from "./ImageEditModal";
 import ConfirmModal from "../../components/modal/ConfirmModal";
-// import { useProcessContext } from '../../context/ProcessContext';
-import { useSelector, useDispatch } from 'react-redux';
-import { selectAllSourceFiles } from '../../redux/selectors/fileSelectors';
-import { removeFile } from '../../redux/actions/fileActions';
+import { PhotoEditor } from '../photo-editor/PhotoEditor'
 
 interface SourceFileTableProps {
   sourceFiles: SourceFileData[];
   onPreview: (file: SourceFileData) => void;
-  // onDelete: (index: number) => void;
-  // onEdit: (file: SourceFileData) => void;
+  onEdit: (id: number) => void;
+  onDelete: (id: number) => void;
 }
 
 export default function SourceFileTable({
   sourceFiles,
   onPreview,
-  // onDelete,
-  // onEdit,
+  onEdit,
+  onDelete,
 }: SourceFileTableProps) {
-  // const { processData, setProcessData } = useProcessContext();
   const { toastSuccess, toastError } = useToast();
 
   const dispatch = useDispatch();
-  const files = useSelector(selectAllSourceFiles);
+  // const files = useSelector(selectAllSourceFiles);
   // const [sourceFiles, setSourceFiles] = useState<SourceFileData[]>([]);
 
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isEditImageModalOpen, setEditImageModalOpen] = useState(false);
- 
   const [selectedFile, setSelectedFile] = useState<SourceFileData | undefined>(undefined);  
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [fileToDeleteIndex, setFileToDeleteIndex] = useState<number | null>(null);
 
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
+
   const [file, setFile] = useState<File | null>(null);
-
-  const translationsEn = {
-    close: 'close',
-    save: 'save',
-    rotate: 'rotate',
-    brightness: 'brightness',
-    contrast: 'contrast',
-    saturate: 'saturate',
-    grayscale: 'grayscale',
-    reset: 'reset',
-    flipHorizontal: 'flip horizontally',
-    flipVertical: 'flip vertically',
-    zoomIn: 'zoom in',
-    zoomOut: 'zoom out',
-    crop: 'crop',
-  };
-
-  const handleRowClick = (index: number) => {
-    setSelectedIndex(index === selectedIndex ? null : index);
-  };
 
   const handleButtonClick = (e: React.MouseEvent) => {
     e.stopPropagation();
   };
+  
+  const handleRowClick = (index: number) => {
+    setSelectedIndex(index === selectedIndex ? null : index);
+  };
 
-  const handleOpenDeleteFileModal = (index: number) => {
+  const handleShowDeleteModal = (index: number) => {
     setFileToDeleteIndex(index);
-    setIsDeleteModalOpen(true);
+    setShowDeleteModal(true);
   };
 
   const handleDeleteFile = () => {
     if (fileToDeleteIndex !== null) {
-      // Delete SourceFile
-      // onDelete(fileToDeleteIndex);
-
       const deletedFile = sourceFiles[fileToDeleteIndex];
       if (deletedFile && deletedFile?.id) {
         dispatch(removeFile(deletedFile.id));
+        onDelete(deletedFile.id);
         toastSuccess(`File ${deletedFile.id} deleted successfully`);
       }
     }
 
     setFileToDeleteIndex(null);
-    setIsDeleteModalOpen(false);
+    setShowDeleteModal(false);
+  };
+  
+  const handleSaveImage = async (editedFile: File) => {
+    setFile(editedFile);
+
+    const base64Data = await readFileAsBase64(editedFile);
+    const id = selectedFile?.id;
+  
+    const fileToUpdate = sourceFiles.find(file => file.id === id);
+  
+    if (!fileToUpdate) return;
+  
+    const updatedFile = {
+      ...fileToUpdate,
+      base64Data: base64Data,
+      blobUrl: base64Data ? convertBase64ToBlobUrl(base64Data) : '',
+    };
+    dispatch(updateFile(updatedFile));
+
+    onEdit(id ?? 0);
   };
 
-  // const handleSaveEdit = (values: AdjustmentValues) => {
-  //   // setAdjustedValues(values);
-  //   toastSuccess(`Adjusted values saved for file: ${selectedFile?.name}`);
-  //   setEditImageModalOpen(false);
-  // };
-
-  // const handleOpenEditModal = (file: SourceFileData) => {
-  //   setSelectedFile(file);
-  //   setEditImageModalOpen(true);
-  // };
-
-  const showEditModalHandler = (file: SourceFileData) => {
+  const handleShowEditModal = (file: SourceFileData) => {
     setSelectedFile(file);
 
-    fetchFileFromUrl(file)
-    .then((file) => {
-      console.log(file);
-      setFile(file);
-      setShowEditModal(true);
-    })
-    .catch((error) => {
-      console.error(error);
-    });
+    convertBlobToFile(file.blobUrl ?? "", file.fileName, file.fileType)
+      .then((file) => {
+        // console.log(file);
+        setFile(file);
+        setShowEditModal(true);
+      })
+      .catch((error) => {
+        console.error(error);
+      });
   };
 
-  const hideEditModal = () => {
+  const handleHideEditModal = () => {
     setShowEditModal(false);
   };
 
-  const handleSaveImage = (editedFile: File) => {
-    // setFile(editedFile);
-    // URL.revokeObjectURL(url);
-  };
+  const PhotoEditorComponent = showEditModal ? (
+    <PhotoEditor
+      open={showEditModal}
+      onClose={handleHideEditModal}
+      file={file}
+      allowColorEditing={true}
+      allowFlip={true}
+      allowRotate={true}
+      allowZoom={true}
+      allowCrop={true}
+      onSaveImage={handleSaveImage}
+      downloadOnSave={false}
+      labels={{
+        close: 'Close',
+        save: 'Save',
+        rotate: 'Rotate',
+        brightness: 'Brightness',
+        contrast: 'Contrast',
+        saturate: 'Saturate',
+        grayscale: 'Grayscale',
+        reset: 'Reset photo',
+        flipHorizontal: 'Flip photo horizontally',
+        flipVertical: 'Flip photo vertically',
+        zoomIn: 'Zoom in',
+        zoomOut: 'Zoom out',
+        crop: 'Crop',
+      }}
+    />
+  ) : null;
 
-  async function fetchFileFromUrl(sourceFiles: SourceFileData): Promise<File> {
-    const response = await fetch(sourceFiles.blobUrl ?? "");
-    const blob = await response.blob();
-  
-    const fileName = sourceFiles.fileName || "";
-    const fileType = sourceFiles.fileType;
-  
-    const file = new File([blob], fileName, { type: fileType });
-    return file;
-  }
-
-  // const PhotoEditorComponent = showEditModal ? (
-  //   <PhotoEditor
-  //     open={showEditModal}
-  //     onClose={hideEditModal}
-  //     file={file}
-  //     allowColorEditing={true}
-  //     allowFlip={true}
-  //     allowRotate={true}
-  //     allowZoom={true}
-  //     allowCrop={true}
-  //     onSaveImage={handleSaveImage}
-  //     downloadOnSave={true}
-  //     labels={translationsEn} // ใส่การแปล
-  //   />
-  // ) : null;
-  
-  // const ImageEditModalComponent = isEditImageModalOpen ? (
-  //   <ImageEditModal
-  //     isOpen={isEditImageModalOpen}
-  //     onClose={() => setEditImageModalOpen(false)}
-  //     imageSrc={selectedFile ? selectedFile.blobUrl : ""}
-  //     onSave={handleSaveEdit}
-  //   />
-  // ) : null;
+  const ConfirmModalComponent = (
+    <ConfirmModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title="Delete File"
+        message={`Are you sure you want to delete this file ${fileToDeleteIndex !== null ? sourceFiles[fileToDeleteIndex]?.fileName : ""}?`}
+        actions={[
+          { label: "NO", onClick: () => setShowDeleteModal(false) },
+          { label: "YES", onClick: handleDeleteFile },
+        ]}
+      />
+  );
 
   return (
     <>
@@ -160,9 +151,9 @@ export default function SourceFileTable({
         <table className="table-auto w-full border border-gray-300 rounded-lg overflow-hidden shadow-sm">
           <thead>
             <tr className="bg-blue-200 text-left text-sm font-medium">
-              <th className="px-4 py-3 !text-black">No.</th>
+              <th className="px-4 py-3 !text-black w-12">No.</th>
               <th className="px-4 py-3 !text-black">File Name</th>
-              <th className="px-4 py-3 !text-black text-center">Actions</th>
+              <th className="px-4 py-3 !text-black text-center w-32">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -174,47 +165,57 @@ export default function SourceFileTable({
                 }`}
                 onClick={() => handleRowClick(index)}
               >
-                <td className="px-4 py-2 text-sm text-gray-600">{index + 1}</td>
-                <td className="px-4 py-2 text-sm text-gray-600">{item.fileName}</td>
-                <td className="px-4 py-2 flex items-center justify-center space-x-2">
-                  {/* Preview Button */}
-                  <button
-                    className="px-3 py-1 text-sm text-white bg-green-500 rounded hover:bg-green-600 transition"
-                    onClick={(e) => {
-                      handleButtonClick(e);
-                      setSelectedIndex(index);
-                      onPreview(item);
-                    }}
-                  >
-                    Preview
-                  </button>
-                  
-                  {/* Edit Button */}
-                  <button 
-                    onClick={(e) => {
-                      handleButtonClick(e);
-                      showEditModalHandler(item)
-                    }}
-                    className={`px-3 py-1 text-sm rounded transition ${
-                      (item.fileType === "application/pdf" || (item.ocrResult && item.ocrResult.length > 0))
-                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                        : "bg-blue-500 text-white hover:bg-blue-600"
-                    }`}
-                    disabled={item.fileType === "application/pdf" || (item.ocrResult && item.ocrResult.length > 0)}
-                  >
-                    Edit
+                <td className="px-4 py-2 text-sm text-gray-600 text-center">{index + 1}</td>
+
+                <td className="px-4 py-2 text-sm text-gray-600" style={{ width: '80%' }}>
+                  {item.fileName}
+                </td>
+
+                {/* Actions */}
+                <td className="px-4 py-2">
+                  <div className="flex justify-end items-center space-x-2">
+                    {/* Preview */}
+                    <button
+                      className="p-2 bg-green-500 rounded-full hover:bg-green-600 transition text-white"
+                      onClick={(e) => {
+                        handleButtonClick(e);
+                        setSelectedIndex(index);
+                        onPreview(item);
+                      }}
+                      title="Preview"
+                    >
+                      <Eye className="w-4 h-4" />
                     </button>
 
-                  {/* Delete Button */}
-                  <button
-                    onClick={(e) => {
-                      handleButtonClick(e);
-                      handleOpenDeleteFileModal(index);
-                    }}
-                    className="px-3 py-1 text-sm text-white bg-red-500 rounded hover:bg-red-600 transition"
-                  >
-                    Delete
-                  </button>
+                    {/* Edit */}
+                    <button
+                      onClick={(e) => {
+                        handleButtonClick(e);
+                        handleShowEditModal(item)
+                      }}
+                      className={`p-2 rounded-full transition ${
+                        (item.fileType === "application/pdf" || (item.ocrResult && item.ocrResult.length > 0))
+                          ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                          : "bg-blue-500 text-white hover:bg-blue-600"
+                      }`}
+                      disabled={item.fileType === "application/pdf" || (item.ocrResult && item.ocrResult.length > 0)}
+                      title="Edit"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+
+                    {/* Delete */}
+                    <button
+                      onClick={(e) => {
+                        handleButtonClick(e);
+                        handleShowDeleteModal(index);
+                      }}
+                      className="p-2 bg-red-500 rounded-full hover:bg-red-600 transition text-white"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -222,36 +223,10 @@ export default function SourceFileTable({
         </table>
       </div>
 
-      {/* {ImageEditModalComponent} */}
+      {PhotoEditorComponent}
 
-      {/* {PhotoEditorComponent} */}
+      {ConfirmModalComponent}
 
-      {showEditModal ? (
-        <PhotoEditor
-          open={showEditModal}
-          onClose={hideEditModal}
-          file={file}
-          allowColorEditing={true}
-          allowFlip={true}
-          allowRotate={true}
-          allowZoom={true}
-          allowCrop={true}
-          onSaveImage={handleSaveImage}
-          downloadOnSave={true}
-          labels={translationsEn} // ใส่การแปล
-        />
-      ): null}
-
-      <ConfirmModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        title="Delete File"
-        message={`Are you sure you want to delete this file ${fileToDeleteIndex !== null ? sourceFiles[fileToDeleteIndex]?.fileName : ""}?`}
-        actions={[
-          { label: "NO", onClick: () => setIsDeleteModalOpen(false) },
-          { label: "YES", onClick: handleDeleteFile },
-        ]}
-      />
     </>
   );
 }

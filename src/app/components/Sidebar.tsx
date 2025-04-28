@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { ChartBar, Languages, History, FileText, Settings, LogOut, LayoutDashboard, ChevronDown, ChevronRight, Menu, X, Home, SquareDashed, BookOpenText } from "lucide-react";
+import { Languages, History, FileText, Settings, LogOut, LayoutDashboard, ChevronDown, ChevronRight, Menu, X, Home, SquareDashed, BookOpenText } from "lucide-react";
 
 type SidebarProps = {
   isOpen: boolean;
@@ -33,7 +33,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         { path: "/settings/preference", name: "Preference", icon: <Settings size={15} /> },
       ],
     },
-    { name: "Test OCR", path: "/reading", icon: <SquareDashed size={18} /> },
+    { name: "Test OCR", path: "/test-ocr", icon: <SquareDashed size={18} /> },
   ];
 
   return (
@@ -100,7 +100,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                         <Link key={child.path} href={child.path}>
                           <span
                             className={`flex items-center space-x-2 px-2 py-1 rounded cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 ${
-                              pathname === child.path ? "bg-gray-200 dark:bg-gray-700" : ""
+                              pathname.startsWith(child.path) ? "bg-gray-200 dark:bg-gray-700" : ""
                             }`}
                           >
                             {child.icon}
@@ -115,7 +115,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                 <div key={link.path}>
                   <Link href={link.path}>
                     <span className={`flex items-center space-x-2 px-2 py-1 rounded cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 ${
-                      pathname === link.path ? "bg-gray-200 dark:bg-gray-700" : ""
+                      pathname.startsWith(link.path) ? "bg-gray-200 dark:bg-gray-700" : ""
                     }`}>
                       {link.icon}
                       <span>{link.name}</span>

@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import useToast from '../../hooks/useToast';
 import { SourceFileData } from "../../interface/file"
+import { exportToExcel } from '../../lib/exportToExcel';
+import { ExportStyledExcel } from '../../lib/exportStyledExcel';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -17,8 +19,7 @@ export default function ExportModal({
   onExportTxt,
   onSendExternal,
 }: ExportModalProps) {
-  const { toastSuccess, toastError, toastInfo, toastWarning } = useToast();
-  
+  const { toastSuccess, toastError } = useToast();
   const [selectedFiles, setSelectedFiles] = useState<SourceFileData[]>([]);
   
   const toggleSelectFile = (file: SourceFileData) => {
@@ -57,6 +58,21 @@ export default function ExportModal({
     resetState();
     onClose();
   };
+
+  const ExportExcelFromText = () => {
+    if (selectedFiles.length === 0) {
+      toastError("Please select at least one file.");
+      return;
+    }
+
+    if (selectedFiles) {
+      selectedFiles.forEach((file) => {
+        const fileNameWithoutExtension = file.fileName.split('.').slice(0, -1).join('.');
+        const content = file.ocrResult?.map(r => r.extractedText).join('\n\n') || '';
+        exportFormattedTextToExcel(content, fileNameWithoutExtension)
+      });
+    }
+  }
 
   const handleExportExternal = () => {
     if (selectedFiles.length === 0) {
@@ -163,6 +179,12 @@ export default function ExportModal({
                 className="text-white bg-[#0369A1] hover:bg-blue-600 font-semibold px-4 py-2 rounded-md text-sm w-32"
               >
                 Export .txt
+              </button>
+              <button
+                onClick={() => ExportExcelFromText()}
+                className="text-white bg-[#0369A1] hover:bg-blue-600 font-semibold px-4 py-2 rounded-md text-sm w-32"
+              >
+                Export .xlsx
               </button>
               <button
                 onClick={() => handleExportExternal()}

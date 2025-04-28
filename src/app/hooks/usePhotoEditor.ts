@@ -48,11 +48,11 @@ export const usePhotoEditor = ({
   const [flipVertical, setFlipVertical] = useState(defaultFlipVertical);
   const [zoom, setZoom] = useState(defaultZoom);
   const [crop, setCrop] = useState(defaultCrop);
-  const [completedCrop, setCompletedCrop] = useState<PixelCrop | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [panStart, setPanStart] = useState<{ x: number; y: number } | null>(null);
   const [offsetX, setOffsetX] = useState(0);
   const [offsetY, setOffsetY] = useState(0);
+  // const [completedCrop, setCompletedCrop] = useState<PixelCrop | null>(null);
 
   useEffect(() => {
     if (file) {

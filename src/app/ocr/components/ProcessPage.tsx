@@ -6,7 +6,7 @@ import { SourceFileData } from "../../interface/file"
 import { useSelector } from 'react-redux';
 import { selectAllSourceFiles } from '../../redux/selectors/fileSelectors';
 import useToast from "../../hooks/useToast";
-import PreviewFile from "./PreviewFile";
+import PreviewFile from "../../components/ocr/PreviewFile";
 import PreviewData from "../../components/ocr/PreviewData";
 import ExportModal from "./ExportModal";
 import SaveModal from "./SaveModal";
@@ -16,18 +16,18 @@ export default function ProcessPage() {
   const dispatch = useDispatch();
   const { toastSuccess, toastError } = useToast();
 
-  const files = useSelector(selectAllSourceFiles);
-  const [sourceFiles, setSourceFiles] = useState<SourceFileData[]>([]);
+  const sourceFiles = useSelector(selectAllSourceFiles);
+  const [files, setFiles] = useState<SourceFileData[]>([]);
   const [selectedSourceFile, setSelectedSourceFile] = useState<number>();
   
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
 
   useEffect(() => {
-    if (files.length > 0) {
-      setSourceFiles(files);
+    if (sourceFiles.length > 0) {
+      setFiles(sourceFiles);
     }
-  }, [files]);
+  }, [sourceFiles]);
 
   const handleClear = () => {
     dispatch(clearFiles());
@@ -54,12 +54,13 @@ export default function ProcessPage() {
   const handleExportTxt = (selectedFiles: SourceFileData[] | null) => {
     if (selectedFiles) {
       selectedFiles.forEach((file) => {
+        const fileNameWithoutExtension = file.fileName.split('.').slice(0, -1).join('.');
         const content = file.ocrResult?.map(r => r.extractedText).join('\n\n') || '';
         const blob = new Blob([content], { type: "text/plain" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `${file.fileName}.txt`;
+        a.download = `${fileNameWithoutExtension}.txt`;
         a.click();
         URL.revokeObjectURL(url);
       });
@@ -107,7 +108,7 @@ export default function ProcessPage() {
             onChange={(e) => setSelectedSourceFile(Number(e.target.value))}
           >
             <option value={-1}>--- Please select source file ---</option>
-            {sourceFiles?.map((file) => (
+            {files?.map((file) => (
               <option key={file.id} value={file.id}>
                 {file.fileName}
               </option>
@@ -118,13 +119,13 @@ export default function ProcessPage() {
       {/* Source and Result Sections */}
       {selectedSourceFile && (
         <div className="mt-4">
-          {sourceFiles
-            .filter((item) => item.id === selectedSourceFile)
-            .map((item) => (
-              <div key={item.id} className="mb-0">
-                {item?.ocrResult?.map((page) => (
+          {files
+            .filter((file) => file.id === selectedSourceFile)
+            .map((file) => (
+              <div key={file.id} className="mb-0">
+                {file?.ocrResult?.map((page) => (
                   <div
-                    key={`${item.id}-${page.page}`}
+                    key={`${file.id}-${page.page}`}
                     className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start mb-0"
                   >
                     {/* Image Section */}
@@ -154,7 +155,7 @@ export default function ProcessPage() {
       <SaveModal
         isOpen={isSaveModalOpen}
         onClose={handleCloseSaveModal}
-        sourceFiles={sourceFiles}
+        sourceFiles={files}
         onSave={handleSave}
       />
 
@@ -162,7 +163,7 @@ export default function ProcessPage() {
       <ExportModal
         isOpen={isExportModalOpen}
         onClose={handleCloseExportModal}
-        sourceFiles={sourceFiles}
+        sourceFiles={files}
         onExportTxt={handleExportTxt}
         onSendExternal={handleSendExternal}
       />

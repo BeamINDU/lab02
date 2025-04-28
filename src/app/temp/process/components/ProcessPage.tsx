@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useDispatch } from 'react-redux';
-import { clearFiles } from '../../redux/actions/fileActions';
-import { SourceFileData } from "../../interface/file"
+import { clearFiles } from '../../../redux/actions/fileActions';
+import { SourceFileData } from "../../../interface/file"
 import { useSelector } from 'react-redux';
-import { selectAllSourceFiles } from '../../redux/selectors/fileSelectors';
-import useToast from "../../hooks/useToast";
-import ExportModal from "./ExportModal";
-import PreviewFile from "../../ocr/components/PreviewFile";
+import { selectAllSourceFiles } from '../../../redux/selectors/fileSelectors';
+import useToast from "../../../hooks/useToast";
+import ExportModal from "../components/ExportModal";
+import PreviewFile from "../../../components/ocr/PreviewFile";
 
 interface ProcessPageProps {
   backUrl: string;

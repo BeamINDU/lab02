@@ -13,7 +13,7 @@ import { selectAllSourceFiles } from '@/app/redux/selectors/fileSelectors';
 import { addFiles, updateFiles, clearFiles } from '@/app/redux/actions/fileActions';
 import { callOcrApi } from '@/app/actions/ocr';
 import SourceFileTable from "@/app/components/ocr/SourceFileTable";
-import PreviewFile from "./PreviewFile";
+import PreviewFile from "../../components/ocr/PreviewFile";
 
 export default function OcrPage() {
   const pathname = usePathname();
@@ -48,6 +48,28 @@ export default function OcrPage() {
     // setSourceFiles(updatedFiles);
     // toastSuccess(`Removed file: ${removedFile.name}`);
   };
+
+  // Handlers for Delete
+  const handleDelete = (id: number) => {
+    const fileToDelete = sourceFiles.find(file => file.id === id);
+    if (!fileToDelete) return;
+  
+    if (filePreview?.id === fileToDelete.id) {
+      setFilePreview(null);
+    }
+  };
+
+  // Handlers for Edit
+  const handleEdit = (id: number) => {
+    const fileToUpdate = sourceFiles.find(file => file.id === id);
+    if (!fileToUpdate) return;
+  
+    if (filePreview?.id === fileToUpdate.id) {
+      setFilePreview(null);
+      setFilePreview({ ...fileToUpdate });
+    }
+  };
+
 
   // Handlers for PreviewFile
   const handlePreviewFile = (file: SourceFileData) => {
@@ -310,8 +332,8 @@ export default function OcrPage() {
             <SourceFileTable
               sourceFiles ={sourceFiles}
               onPreview={handlePreviewFile}
-              // onDelete={handleDeleteFile}
-              // onEdit={handleOpenEditModal}
+              onDelete={handleDelete}
+              onEdit={handleEdit}
             />
           </div>
         </div>

@@ -15,8 +15,8 @@ export default function SaveModal({
   sourceFiles,
   onSave,
 }: SaveModalProps) {
-  const [selectedFiles, setSelectedFiles] = useState<SourceFileData[]>([]);
   const { toastError } = useToast();
+  const [selectedFiles, setSelectedFiles] = useState<SourceFileData[]>([]);
   
   const toggleSelectFile = (file: SourceFileData) => {
     setSelectedFiles((prev) => {
