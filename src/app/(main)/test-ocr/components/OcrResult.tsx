@@ -1,4 +1,4 @@
-import { SourceFileData } from "@/app/lib/types";
+import { SourceFileData } from "@/app/lib/interfaces";
 import PreviewData from "@/app/components/ocr/PreviewData";
 
 export default function OcrResultComponent({ result }: { result: SourceFileData[] }) {

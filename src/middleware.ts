@@ -13,11 +13,9 @@ const protectedRoutes = [
 ];
 
 export async function middleware(req: NextRequest) {
-  // const token = req.cookies.get('token')?.value;
-  
   const token = await getToken({ req });
-  console.log("token", token)
-  console.log("pathname", req.nextUrl.pathname)
+  // console.log("token", token)
+  // console.log("pathname", req.nextUrl.pathname)
 
   const isProtected = protectedRoutes.some((route) =>
     req.nextUrl.pathname.startsWith(route)
@@ -33,5 +31,12 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: protectedRoutes,
+  matcher: [
+    '/ocr/:path*',
+    '/translate/:path*',
+    '/profile/:path*',
+    '/settings/:path*',
+    '/history/:path*',
+    '/report/:path*',
+  ],
 };

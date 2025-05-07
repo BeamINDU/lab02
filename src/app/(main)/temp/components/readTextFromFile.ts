@@ -1,5 +1,5 @@
-import { convertBase64ToBlobUrl } from './utils/file';
-import { SourceFileData, OcrResult } from './types';
+import { convertBase64ToBlobUrl } from '@/app/lib/utils/file';
+import { SourceFileData, OcrResult } from '@/app/lib/interfaces';
 import { getDocument } from 'pdfjs-dist';
 import Tesseract from 'tesseract.js';
 

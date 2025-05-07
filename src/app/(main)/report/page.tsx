@@ -61,7 +61,7 @@ const ReportPage = () => {
       try {
         const response = await fetch("/data/report.json");
         const jsonData: ReportItem[] = await response.json();
-        console.log("Fetched Data:", jsonData); // ตรวจสอบข้อมูลที่ดึงมา
+        // console.log("Fetched Data:", jsonData);
         setData(jsonData);
       } catch (error) {
         console.error("Error fetching data:", error);

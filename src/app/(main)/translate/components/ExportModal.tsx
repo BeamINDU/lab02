@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import useToast from '@/app/hooks/useToast';
-import { SourceFileData } from "@/app/lib/types"
+import { SourceFileData } from "@/app/lib/interfaces"
 import { ExportExcel, ExportWord, ExportText } from '@/app/lib/exports';
 
 interface ExportModalProps {
@@ -78,7 +78,6 @@ export default function ExportModal({
     setShowExportOptions(false);
     resetState();
     onClose();
-    // toastSuccess(`Exported as .${exportType} successfully.`);
   };
 
   const resetState = () => {

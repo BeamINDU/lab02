@@ -2,23 +2,20 @@
 
 import React, { useState, useRef, useEffect, ChangeEvent } from "react";
 import useToast from "@/app/hooks/useToast";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from 'react-redux';
 import { readFileAsBase64, convertBase64ToBlobUrl } from '@/app/lib/utils/file';
 import { convertFileSizeToMB } from "@/app/lib/utils/format";
-import { SourceFileData, ParamOcrRequest } from "@/app/lib/types"
+import { SourceFileData, ParamOcrRequest } from "@/app/lib/interfaces"
 import { selectAllSourceFiles } from '@/app/store/file/fileSelectors';
 import { addFiles, clearFiles } from '@/app/store/file/fileActions';
 import SourceFileTable from "@/app/components/ocr/SourceFileTable";
 import PreviewFile from "@/app/components/ocr/PreviewFile";
 import Processing from "@/app/components/processing/Processing";
 import { ocrReader } from '@/app/lib/api/ocr';
-import { useSession } from "next-auth/react";
 
 export default function OcrPage() {
-  const { data: session } = useSession();
   const { toastSuccess, toastError } = useToast();
-  const pathname = usePathname();
   const router = useRouter();
   const dispatch = useDispatch();
   const sourceFiles = useSelector(selectAllSourceFiles);
@@ -27,14 +24,6 @@ export default function OcrPage() {
   const [processing, setProcessing] = useState(false);
   const [loading , setLoading ] = useState(false);
 
-  // useEffect(() => {
-  //   const currentPath = pathname;
-  //   return () => {
-  //     if (currentPath === "/ocr") {
-  //       dispatch(clearFiles());
-  //     }
-  //   };
-  // }, [pathname]);
 
   // Handlers for Add
   const handleAdd = () => {
@@ -97,7 +86,7 @@ export default function OcrPage() {
       const base64Data = await readFileAsBase64(file);
 
       const rawResult: SourceFileData = {
-        id:Date.now(),
+        id: Date.now(),
         fileName: file.name,
         fileType: file.type,
         base64Data: base64Data,
@@ -125,13 +114,13 @@ export default function OcrPage() {
     try {
       setProcessing(true);
       await processOcr();
-
-      setProcessing(false);
       toastSuccess("OCR processing completed.");
       router.push('/ocr/process');
     } catch (error) {
       console.error("Error during OCR processing", error);
-      toastError("Error during OCR processing.");
+      toastError("Failed to process OCR. Please try again.");
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -141,23 +130,31 @@ export default function OcrPage() {
       fileType: file.fileType,
       base64Data: file.base64Data,
     })) ?? [];
-
-    const response: SourceFileData[] = await ocrReader(param); 
-
-    const ocrResult = response?.map((file) => ({
-      ...file,
-      blobUrl: file.base64Data ? convertBase64ToBlobUrl(file.base64Data) : '',
-      ocrResult: file.ocrResult?.map((page) => ({
-        ...page,
-        blobUrl: page.base64Data ? convertBase64ToBlobUrl(page.base64Data) : '',
-      })) ?? [],
-    }));
-    
-    dispatch(clearFiles());
-    dispatch(addFiles(ocrResult)); 
-    
-    return ocrResult;
-  }
+  
+    console.log("ParamOcrRequest:", param);
+  
+    try {
+      const response: SourceFileData[] = await ocrReader(param);
+  
+      const ocrResult = response?.map((file) => ({
+        ...file,
+        blobUrl: file.base64Data ? convertBase64ToBlobUrl(file.base64Data) : '',
+        ocrResult: file.ocrResult?.map((page) => ({
+          ...page,
+          blobUrl: page.base64Data ? convertBase64ToBlobUrl(page.base64Data) : '',
+        })) ?? [],
+      }));
+  
+      dispatch(clearFiles());
+      dispatch(addFiles(ocrResult));
+  
+      return ocrResult;
+    } catch (error) {
+      console.error("[OCR] Failed during processOcr:", error);
+      throw error;
+    }
+  };
+  
   
   return (
     <div className="flex flex-col p-2 h-full">
@@ -166,8 +163,6 @@ export default function OcrPage() {
         {/* Source Add Button */}
         <div className="flex flex-col">
           <div className="mb-4 flex flex-col sm:flex-row sm:space-x-2 space-y-2 sm:space-y-0 w-full">
-            {/* <ExportExcelFromText/> */}
-            
             <button
               onClick={handleAdd}
               className="text-white bg-[#0369A1] hover:bg-blue-600 font-semibold px-4 py-2 rounded-md text-sm w-full sm:w-24"

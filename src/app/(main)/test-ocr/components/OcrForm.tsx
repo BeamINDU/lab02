@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ocrReader } from '@/app/lib/api/ocr';
 import OcrResultComponent from './OcrResult';
-import { SourceFileData, ParamOcrRequest } from "@/app/lib/types";
+import { SourceFileData, ParamOcrRequest } from "@/app/lib/interfaces";
 import { convertBase64ToBlobUrl } from '@/app/lib/utils/file';
 
 export default function OcrForm() {

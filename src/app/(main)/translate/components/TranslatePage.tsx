@@ -6,7 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useSelector, useDispatch } from 'react-redux';
 import { readFileAsBase64, convertBase64ToBlobUrl, convertFileToBase64 } from '@/app/lib/utils/file';
 import { convertFileSizeToMB } from "@/app/lib/utils/format";
-import { SourceFileData, OcrResult, ParamOcrRequest,  } from "@/app/lib/types"
+import { SourceFileData, OcrResult, ParamOcrRequest,  } from "@/app/lib/interfaces"
 import { selectAllSourceFiles } from '@/app/store/file/fileSelectors';
 import { addFiles, updateFile, updateFiles, clearFiles } from '@/app/store/file/fileActions';
 import { optionsLanguage } from '@/app/lib/constants';
@@ -227,13 +227,13 @@ export default function TranslatePage() {
         await processTranslate(sourceFiles);
       }
       
-      setProcessing(false);
       toastSuccess("Translation processing completed.");
       router.push('/translate/process');
     } catch (error) {
-      setProcessing(false);
       console.error("Error during Translation processing", error);
       toastError("Error during Translation processing.");
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -266,7 +266,6 @@ export default function TranslatePage() {
     try {
       const updatedFiles = await Promise.all(files?.map(updateSourceFile));
       dispatch(updateFiles(updatedFiles));
-
       // dispatch(clearFiles());
       // dispatch(addFiles(updatedFiles));
     } catch (error) {
@@ -275,21 +274,44 @@ export default function TranslatePage() {
   };
 
   const updateSourceFile = async (file: SourceFileData): Promise<SourceFileData> => {
-    const updatedOcrResult = await Promise.all((file.ocrResult ?? []).map(translateOcrResult));
-    return {
-      ...file,
-      // id: file.ocrId ?? 0,
-      targetLanguage: targetLanguage,
-      ocrResult: updatedOcrResult,
-    };
+    try {
+      const updatedOcrResult = await Promise.all(
+        (file.ocrResult ?? []).map(async (ocr, index) => {
+          try {
+            // console.log(`Translating page ${index + 1} of ${file.fileName}`);
+            const result = await translateOcrResult(ocr);
+            // console.log(`Translated page ${index + 1} of ${file.fileName}`);
+            return result;
+          } catch (error) {
+            console.error(`Failed to translate page ${index + 1} of ${file.fileName}:`, error);
+            return { ...ocr, translateText: "[Translation failed]" };
+          }
+        })
+      );
+  
+      return {
+        ...file,
+        targetLanguage: targetLanguage,
+        ocrResult: updatedOcrResult,
+      };
+    } catch (error) {
+      console.error(`[Error] updateSourceFile for file: ${file.fileName}`, error);
+      throw error;
+    }
   };
 
   const translateOcrResult = async (ocr: OcrResult): Promise<OcrResult> => {
-    // const response = await translate(ocr.extractedText ?? '', targetLanguage);
-    return {
-      ...ocr,
-      translateText: ocr.extractedText, //response.translatedText,
-    };
+    try {
+      const response = await translate(ocr.extractedText ?? '', targetLanguage);
+      // console.log('[Translation Success]', response);
+      return {
+        ...ocr,
+        translateText: response,
+      };
+    } catch (error) {
+      console.error('[Translation Failed]:', error);
+      throw error;
+    }
   };
   
   

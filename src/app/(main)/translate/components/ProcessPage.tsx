@@ -10,7 +10,7 @@ import PreviewData from "@/app/components/ocr/PreviewData";
 import ExportModal from "./ExportModal";
 import SaveModal from "./SaveModal";
 import { saveTranslate } from '@/app/lib/api/translate';
-import { SourceFileData, ParamSaveTranslateRequest } from "@/app/lib/types"
+import { SourceFileData, ParamSaveTranslateRequest } from "@/app/lib/interfaces"
 
 export default function ProcessPage() {
   const { data: session } = useSession();
@@ -51,27 +51,29 @@ export default function ProcessPage() {
     try {
       const updatedFiles = [...sourceFiles];
 
-      // for (const file of selectedFiles) {
-      //   const param: ParamSaveTranslateRequest  = {
-      //     userId: userId,
-      //     ocrId: file.ocrId,
-      //     targetLanguage: "",
-      //     ocrResult: file.ocrResult ?? []
-      //   }
-      //   const response: SourceFileData = await saveTranslate(param);
-      //   const data = { ...response, id: file.id }
-      //   dispatch(updateFile(data)); 
-      // }
+      for (const file of selectedFiles) {
+        const param: ParamSaveTranslateRequest  = {
+          id: file.id ?? 0,
+          ocrId: file.ocrId ?? 0,
+          fileId: file.fileId ?? 0,
+          fileName: file.fileName,
+          fileType: file.fileType,
+          base64Data: file.base64Data,
+          ocrResult: file.ocrResult ?? [],
+          targetLanguage: file.targetLanguage,
+          transId: file.transId ?? 0,
+          userId: userId,
+        }
 
-      // const param: ParamSaveTranslateRequest[] = selectedFiles?.map(file => ({
-      //   ocrId: file.ocrId,
-      //   targetLanguage: "",
-      //   ocrResult: file.ocrResult ?? [],
-      //   userId: userId,
-      // }));
-      // const response: SourceFileData[] = await saveTranslate(param);
-      // dispatch(updateFiles(response)); 
+        console.log('ParamSaveTranslateRequest', param);
 
+        const response = await saveTranslate(param);
+        const index = updatedFiles.findIndex(f => f.id === file.id);
+        if (index !== -1) {
+          updatedFiles[index] = { ...response, id: file.id };
+        }
+      }
+      
       setSourceFiles(updatedFiles); 
       toastSuccess("OCR saving completed.");
       handleCloseSaveModal();

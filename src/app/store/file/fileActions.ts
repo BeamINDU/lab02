@@ -1,5 +1,5 @@
 // redux/actions.ts
-import { SourceFileData } from "@/app/lib/types"
+import { SourceFileData } from "@/app/lib/interfaces"
 export const ADD_FILES = 'ADD_FILES';
 export const REMOVE_FILE = 'REMOVE_FILE';
 export const UPDATE_FILE = 'UPDATE_FILE';

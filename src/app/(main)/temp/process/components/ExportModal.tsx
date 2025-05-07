@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import useToast from '@/app/hooks/useToast';
-import { SourceFileData } from "@/app/lib/types"
+import { SourceFileData } from "@/app/lib/interfaces"
 
 // interface OptionProps {
 //   label: string;

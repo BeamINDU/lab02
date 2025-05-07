@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 // import { selectAllSourceFiles } from '@/app/store/file/fileSelectors';
 import { updateFile, removeFile } from '@/app/store/file/fileActions';
 import { readFileAsBase64, convertBase64ToBlobUrl, convertBlobToFile } from '@/app/lib/utils/file';
-import { SourceFileData } from "@/app/lib/types";
+import { SourceFileData } from "@/app/lib/interfaces";
 import ConfirmModal from "@/app/components/modal/ConfirmModal";
 import { PhotoEditor } from '@/app/components/photo-editor/PhotoEditor'
 

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useDispatch } from 'react-redux';
 import { clearFiles } from '@/app/store/file/fileActions';
-import { SourceFileData } from "@/app/lib/types"
+import { SourceFileData } from "@/app/lib/interfaces"
 import { useSelector } from 'react-redux';
 import { selectAllSourceFiles } from '@/app/store/file/fileSelectors';
 import useToast from "@/app/hooks/useToast";

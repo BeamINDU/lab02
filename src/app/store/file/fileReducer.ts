@@ -1,5 +1,5 @@
 import { ADD_FILES, REMOVE_FILE, UPDATE_FILE, UPDATE_FILES, CLEAR_FILES } from './fileActions';
-import { SourceFileData } from "@/app/lib/types"
+import { SourceFileData } from "@/app/lib/interfaces"
 
 interface FileState {
   sourceFiles: SourceFileData[];
@@ -58,7 +58,6 @@ export const fileReducer = (state = initialState, action: any): FileState => {
     
       
     case CLEAR_FILES:
-      console.log("Reducer: CLEAR_FILES called");
       return {
         ...state,
         sourceFiles: []

@@ -3,14 +3,14 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useSelector } from 'react-redux';
 import { useDispatch } from 'react-redux';
-import { clearFiles, updateFile } from '@/app/store/file/fileActions';
+import { clearFiles } from '@/app/store/file/fileActions';
 import { selectAllSourceFiles } from '@/app/store/file/fileSelectors';
 import useToast from "@/app/hooks/useToast";
 import PreviewData from "@/app/components/ocr/PreviewData";
 import ExportModal from "./ExportModal";
 import SaveModal from "./SaveModal";
 import { saveOcr } from '@/app/lib/api/ocr';
-import { SourceFileData, ParamSaveOcrRequest } from "@/app/lib/types";
+import { SourceFileData, ParamSaveOcrRequest } from "@/app/lib/interfaces";
 
 export default function ProcessPage() {
   const { data: session } = useSession();
@@ -75,9 +75,7 @@ export default function ProcessPage() {
 
   const handleSendExternal = (selectedFiles: SourceFileData[] | null) => {
     if (selectedFiles) {
-      selectedFiles.forEach((file) => {
-        
-      });
+      selectedFiles.forEach((file) => {});
       toastSuccess(`The result(s) will be sent to the external system.`);
     }
   };
