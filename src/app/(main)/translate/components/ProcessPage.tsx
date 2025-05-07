@@ -65,7 +65,7 @@ export default function ProcessPage() {
           userId: userId,
         }
 
-        console.log('ParamSaveTranslateRequest', param);
+        // console.log('ParamSaveTranslateRequest', param);
 
         const response = await saveTranslate(param);
         const index = updatedFiles.findIndex(f => f.id === file.id);

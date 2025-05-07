@@ -1,9 +1,9 @@
 'use server'
 
+import { request } from 'undici';
 import { SourceFileData, ParamOcrRequest, ParamSaveOcrRequest } from "@/app/lib/interfaces"
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-
 
 export async function getOcr(userId: string): Promise<SourceFileData[]> {
   const response = await fetch(`${baseUrl}/get_ocr?user_id=${userId}`, {
@@ -42,25 +42,29 @@ export async function saveOcr(data: ParamSaveOcrRequest): Promise<SourceFileData
 export async function ocrReader(data: ParamOcrRequest[]): Promise<SourceFileData[]> {
   const startTime = Date.now();
   const formatTime = (ms: number) => new Date(ms).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
+
   console.log(`[OCR] Start request at ${formatTime(startTime)}`);
 
   try {
-    const response = await fetchWithTimeout(`${baseUrl}/ocr`, {
+    const { body, statusCode } = await request(`${baseUrl}/ocr`, {
       method: 'POST',
       headers: {
         accept: 'application/json',
-        'Content-Type': 'application/json',
+        'content-type': 'application/json',
       },
       body: JSON.stringify(data),
+      headersTimeout: 7200000, // 2 Hour
+      bodyTimeout: 7200000,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('OCR API Error:', errorText);
-      throw new Error(`OCR API error: ${response.statusText}`);
+    const text = await body.text();
+
+    if (statusCode >= 400) {
+      console.error('OCR API Error:', text);
+      throw new Error(`OCR API error (${statusCode}): ${text}`);
     }
 
-    const result = await response.json();
+    const result = JSON.parse(text);
     const endTime = Date.now();
     console.log(`[OCR] End request at ${formatTime(endTime)} (Duration ${endTime - startTime} ms)`);
 
@@ -68,34 +72,20 @@ export async function ocrReader(data: ParamOcrRequest[]): Promise<SourceFileData
   } catch (error: any) {
     const failTime = Date.now();
     console.error(`[OCR] Request failed at ${formatTime(failTime)} (Duration ${failTime - startTime} ms)`);
-  
+
     if (error?.cause?.code === 'UND_ERR_HEADERS_TIMEOUT') {
       throw new Error('OCR request failed due to headers timeout');
     }
-  
+
     if (error.name === 'AbortError') {
-      throw new Error('OCR request timed out after 1 hour');
+      throw new Error('OCR request timed out');
     }
-  
+
     throw error;
   }
 }
 
-async function fetchWithTimeout(
-  resource: string,
-  options: RequestInit = {},
-  timeoutMs = 7200000
-): Promise<Response> {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeoutMs);
-  const { signal } = controller;
 
-  try {
-    return await fetch(resource, { ...options, signal });
-  } finally {
-    clearTimeout(id);
-  }
-}
 
 
 // export async function sendImageToOCR(blob: Blob): Promise<string> {
