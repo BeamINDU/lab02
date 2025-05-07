@@ -5,12 +5,19 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Languages, History, FileText, Settings, LogOut, LayoutDashboard, ChevronDown, ChevronRight, Menu, X, Home, SquareDashed, BookOpenText } from "lucide-react";
 
+// import { useSession } from "next-auth/react";
+// import { getServerSession } from 'next-auth';
+// import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+
 type SidebarProps = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
 };
 
 export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
+  // const { data: session } = useSession();
+  // const session = await getServerSession(authOptions);
+
   const pathname = usePathname();
   const width = 260;
   const [openMenus, setOpenMenus] = useState<{ [key: string]: boolean }>({});
@@ -33,7 +40,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         { path: "/settings/preference", name: "Preference", icon: <Settings size={15} /> },
       ],
     },
-    { name: "Test OCR", path: "/test-ocr", icon: <SquareDashed size={18} /> },
+    // { name: "Test OCR", path: "/test-ocr", icon: <SquareDashed size={18} /> },
   ];
 
   return (
@@ -55,7 +62,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
       >
         <div className="h-full p-4 space-y-4">
           <div className="flex items-center justify-between">
-            <div className="text-xl font-bold">My App</div>
+            <div className="text-xl font-bold">CSI - OCR</div>
 
             {/* ปุ่ม X สำหรับ mobile */}
             <button

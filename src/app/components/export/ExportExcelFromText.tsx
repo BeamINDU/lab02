@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { ExportStyledExcel } from '../../lib/exportStyledExcel';
+import { ExportExcel } from '../../lib/exports/exportToExcel';
 
 const ExportExcelFromText: React.FC = () => {
   const data = `172. **[T]** The Holling type II equation is described by
@@ -48,10 +48,10 @@ c. Plot the resulting Holling-type I, II, and III functions on top of the data. 
 
   return (
     <button
-      onClick={() => ExportStyledExcel(data, 'Holling_Equations')}
+      onClick={() => ExportExcel(data, 'Holling_Equations')}
       className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
     >
-      Export Excel
+      Test Export Excel
     </button>
   );
 };

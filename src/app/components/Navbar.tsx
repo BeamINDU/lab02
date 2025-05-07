@@ -5,8 +5,9 @@ import { useEffect, useState } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 
 export default function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
-  const [darkMode, setDarkMode] = useState(false);
   const { data: session } = useSession();
+
+  const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
     const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;

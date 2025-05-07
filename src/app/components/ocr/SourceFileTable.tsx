@@ -1,19 +1,20 @@
 import React, { useState } from "react";
 import { Eye, Pencil, Trash2 } from 'lucide-react';
-import useToast from "../../hooks/useToast";
+import useToast from "@/app/hooks/useToast";
 import { useDispatch, useSelector } from 'react-redux';
-// import { selectAllSourceFiles } from '../../redux/selectors/fileSelectors';
-import { updateFile, removeFile } from '../../redux/actions/fileActions';
-import { readFileAsBase64, convertBase64ToBlobUrl, convertBlobToFile } from '../../utils/file';
-import { SourceFileData } from "../../interface/file";
-import ConfirmModal from "../../components/modal/ConfirmModal";
-import { PhotoEditor } from '../photo-editor/PhotoEditor'
+// import { selectAllSourceFiles } from '@/app/store/file/fileSelectors';
+import { updateFile, removeFile } from '@/app/store/file/fileActions';
+import { readFileAsBase64, convertBase64ToBlobUrl, convertBlobToFile } from '@/app/lib/utils/file';
+import { SourceFileData } from "@/app/lib/types";
+import ConfirmModal from "@/app/components/modal/ConfirmModal";
+import { PhotoEditor } from '@/app/components/photo-editor/PhotoEditor'
 
 interface SourceFileTableProps {
   sourceFiles: SourceFileData[];
   onPreview: (file: SourceFileData) => void;
   onEdit: (id: number) => void;
   onDelete: (id: number) => void;
+  loading : boolean;
 }
 
 export default function SourceFileTable({
@@ -21,11 +22,12 @@ export default function SourceFileTable({
   onPreview,
   onEdit,
   onDelete,
+  loading ,
 }: SourceFileTableProps) {
   const { toastSuccess, toastError } = useToast();
 
   const dispatch = useDispatch();
-  // const files = useSelector(selectAllSourceFiles);
+  // const initialFiles = useSelector(selectAllSourceFiles);
   // const [sourceFiles, setSourceFiles] = useState<SourceFileData[]>([]);
 
   const [selectedFile, setSelectedFile] = useState<SourceFileData | undefined>(undefined);  
@@ -157,9 +159,14 @@ export default function SourceFileTable({
             </tr>
           </thead>
           <tbody>
-            {sourceFiles?.map((item, index) => (
+          {loading ? (
+            <tr>
+              <td colSpan={3} className="px-4 py-3 text-sm text-gray-500 text-center">Loading...</td>
+            </tr>
+          ) : (
+            sourceFiles?.map((item, index) => (
               <tr
-                key={index}
+                key={item.id}
                 className={`border-t transition ease-in-out duration-150 ${
                   selectedIndex === index ? "bg-gray-200" : index % 2 === 0 ? "bg-gray-50" : "bg-white"
                 }`}
@@ -218,7 +225,8 @@ export default function SourceFileTable({
                   </div>
                 </td>
               </tr>
-            ))}
+            ))
+          )}
           </tbody>
         </table>
       </div>

@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, ReactNode } from 'react';
-import { SourceFileData } from "../interface/file"
+import { SourceFileData } from "@/app/lib/types"
 
 // กำหนดประเภทของข้อมูลใน context
 interface ProcessData {

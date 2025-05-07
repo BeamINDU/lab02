@@ -34,7 +34,7 @@ export default function Sidebar({
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
   const menuItems: MenuItem[] = [
-    { code: "reading", name: "OCR Reading", path: "/reading", icon: <ChartBarIcon className="w-6 h-6" /> },
+    { code: "reading", name: "OCR Reading", path: "/ocr", icon: <ChartBarIcon className="w-6 h-6" /> },
     { code: "translate", name: "Translate", path: "/translate", icon: <LanguagesIcon className="w-6 h-6" /> },
     { code: "history", name: "History", path: "/history", icon: <HistoryIcon className="w-6 h-6" /> },
     { code: "report", name: "Report", path: "/report", icon: <FileTextIcon className="w-6 h-6" /> },
@@ -148,7 +148,7 @@ export default function Sidebar({
       <div className="flex-grow"></div>
       <div className="mt-auto border-t border-gray-700">
         <Link
-          href="/auth/login"
+          href="/login"
           className="flex items-center px-4 py-3 hover:bg-gray-700 transition-all duration-200"
         >
           <LogOutIcon className="w-6 h-6 text-white" />

@@ -1,27 +1,23 @@
 "use client";
 
 import { useState } from "react";
+import NextTopLoader from "nextjs-toploader";
+import ToastNotifications from '@/app/components/notification/ToastNotifications'; 
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
-import ToastNotifications from '@/app/components/notification/ToastNotifications'; 
-import NextTopLoader from "nextjs-toploader";
-import { useSession } from "next-auth/react";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { data: session } = useSession();
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* {!session && ( */}
-        <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
-      {/* )} */}
+      <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
+
       <div className="flex flex-col flex-1">
-        {/* {!session && ( */}
-          <Navbar onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
-        {/* )} */}
+        <Navbar onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
         <ToastNotifications /> 
+
         <NextTopLoader />
 
         <main className="flex-1 overflow-auto p-4 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">

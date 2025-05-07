@@ -12,11 +12,11 @@ export default function Navbar() {
 
   const handleLogout = () => {
     // signOut();
-    router.push("/auth/login");
+    router.push("/login");
   };
 
   const navigateToDashboard = () => {
-    router.push("/reading");
+    router.push("/ocr");
   };
 
   return (

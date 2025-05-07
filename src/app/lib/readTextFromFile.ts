@@ -1,5 +1,5 @@
-import { convertBase64ToBlobUrl } from '../utils/file';
-import { SourceFileData, OcrResult } from '../interface/file';
+import { convertBase64ToBlobUrl } from './utils/file';
+import { SourceFileData, OcrResult } from './types';
 import { getDocument } from 'pdfjs-dist';
 import Tesseract from 'tesseract.js';
 
@@ -27,7 +27,7 @@ export const readTextFromFile = async (
       ocrResult: [{
         page: 1,
         extractedText: extractedTextString,
-        base64Image: selectedFile.base64Data,
+        base64Data: selectedFile.base64Data,
         blobUrl: selectedFile.blobUrl
       }]
     };
@@ -49,10 +49,10 @@ export const readTextFromFile = async (
       if (context) {
         await page.render({ canvasContext: context, viewport }).promise;
 
-        const base64Image = canvas.toDataURL(selectedFile.fileType, 0.5);
-        const blobUrl = convertBase64ToBlobUrl(base64Image);
+        const base64Data = canvas.toDataURL(selectedFile.fileType, 0.5);
+        const blobUrl = convertBase64ToBlobUrl(base64Data);
 
-        const { data: { text } } = await worker.recognize(base64Image);
+        const { data: { text } } = await worker.recognize(base64Data);
 
         const extractedTextString = JSON.stringify({
           primary_language: sourceLang,
@@ -66,7 +66,7 @@ export const readTextFromFile = async (
         ocrResult.push({
           page: pageNum,
           extractedText: extractedTextString,
-          base64Image,
+          base64Data,
           blobUrl
         });
 

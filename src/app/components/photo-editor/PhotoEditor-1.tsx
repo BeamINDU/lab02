@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, ChangeEvent } from 'react';
 import { RotateCcw, FlipHorizontal, FlipVertical, ZoomIn, ZoomOut, Crop } from 'lucide-react';
 import { PhotoEditorProps } from './interface';
-import { usePhotoEditor } from '../../hooks/usePhotoEditor';
+import { usePhotoEditor } from '@/app/hooks/usePhotoEditor';
 
 export const PhotoEditor: React.FC<PhotoEditorProps> = ({
   file,
