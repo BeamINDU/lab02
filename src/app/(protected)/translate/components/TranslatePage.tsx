@@ -238,28 +238,35 @@ export default function TranslatePage() {
   };
 
   const processOcr = async (): Promise<SourceFileData[]> => {
-    const param: ParamOcrRequest[] = sourceFiles?.map(file => ({
-      fileName: file.fileName,
-      fileType: file.fileType,
-      base64Data: file.base64Data,
-    })) ?? [];
-  
-    const response: SourceFileData[] = await ocrReader(param);
-
-    const ocrResult = response?.map((item) => ({
-      ...item,
-      targetLanguage: targetLanguage,
-      blobUrl: item.base64Data ? convertBase64ToBlobUrl(item.base64Data) : '',
-      ocrResult: item.ocrResult?.map((page) => ({
-        ...page,
-        blobUrl: page.base64Data ? convertBase64ToBlobUrl(page.base64Data) : '',
-      })) ?? [],
-    }));
+    try {
+      const param: ParamOcrRequest[] = sourceFiles?.map(file => ({
+        fileName: file.fileName,
+        fileType: file.fileType,
+        base64Data: file.base64Data,
+      })) ?? [];
     
-    dispatch(clearFiles());
-    dispatch(addFiles(ocrResult)); 
-  
-    return ocrResult;
+      console.log("ParamOcrRequest:", param); 
+      const response: SourceFileData[] = await ocrReader(param);
+      console.log("OcrResult:", response); 
+
+      const ocrResult = response?.map((item) => ({
+        ...item,
+        blobUrl: item.base64Data ? convertBase64ToBlobUrl(item.base64Data) : '',  
+        ocrResult: item.ocrResult?.map((page) => ({
+          ...page,
+          blobUrl: page.base64Data ? convertBase64ToBlobUrl(page.base64Data) : '',
+        })) ?? [],
+        targetLanguage: targetLanguage,
+      }));
+      
+      dispatch(clearFiles());
+      dispatch(addFiles(ocrResult)); 
+    
+      return ocrResult;
+    } catch (error) {
+      console.error("[OCR] Failed during processOcr:", error);
+      throw error;
+    }
   };
   
   const processTranslate = async (files: SourceFileData[]) => {

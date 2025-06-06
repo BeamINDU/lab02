@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { ExportExcel } from '../../lib/exports/exportToExcel';
+import { ExportExcel } from '../../lib/exports/exportExcel';
 
 const ExportExcelFromText: React.FC = () => {
   const data = `172. **[T]** The Holling type II equation is described by

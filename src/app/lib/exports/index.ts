@@ -1,3 +1,3 @@
-export * from './exportToExcel';
-export * from './exportToWord';
-export * from './exportToText';
+export * from './exportExcel';
+export * from './exportWord';
+export * from './exportText';

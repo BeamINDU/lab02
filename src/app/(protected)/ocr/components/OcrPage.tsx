@@ -125,16 +125,16 @@ export default function OcrPage() {
   };
 
   const processOcr = async () => {
-    const param: ParamOcrRequest[] = sourceFiles?.map(file => ({
-      fileName: file.fileName,
-      fileType: file.fileType,
-      base64Data: file.base64Data,
-    })) ?? [];
-  
-    console.log("ParamOcrRequest:", param);
-  
     try {
+      const param: ParamOcrRequest[] = sourceFiles?.map(file => ({
+        fileName: file.fileName,
+        fileType: file.fileType,
+        base64Data: file.base64Data,
+      })) ?? [];
+    
+      console.log("ParamOcrRequest:", param); 
       const response: SourceFileData[] = await ocrReader(param);
+      console.log("OcrResult:", response); 
   
       const ocrResult = response?.map((file) => ({
         ...file,
