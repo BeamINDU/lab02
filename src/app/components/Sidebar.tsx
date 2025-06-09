@@ -30,16 +30,17 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     // { name: "Home", path: "/", icon: <Home size={18} /> },
     { name: "OCR Reading", path: "/ocr", icon: <BookOpenText size={18} /> },
     { name: "Translate", path: "/translate", icon: <Languages size={18} /> },
-    { name: "History", path: "/history", icon: <History size={18} /> },
-    { name: "Report", path: "/report", icon: <FileText size={18} /> },
-    {
-      name: "Settings",
-      icon: <Settings size={18} />,
-      children: [
-        { path: "/settings/template", name: "Template", icon: <Settings size={15} /> },
-        { path: "/settings/preference", name: "Preference", icon: <Settings size={15} /> },
-      ],
-    },
+    { name: "Accounting OCR", path: "/accounting", icon: <FileText size={18} /> },
+    // { name: "History", path: "/history", icon: <History size={18} /> },
+    // { name: "Report", path: "/report", icon: <FileText size={18} /> },
+    // {
+    //   name: "Settings",
+    //   icon: <Settings size={18} />,
+    //   children: [
+    //     { path: "/settings/template", name: "Template", icon: <Settings size={15} /> },
+    //     { path: "/settings/preference", name: "Preference", icon: <Settings size={15} /> },
+    //   ],
+    // },
     // { name: "Test OCR", path: "/test-ocr", icon: <SquareDashed size={18} /> },
   ];
 

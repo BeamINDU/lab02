@@ -33,17 +33,17 @@ export default function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
       </div>
 
       <div className="flex items-center gap-4">
-        <button onClick={() => setDarkMode(!darkMode)}>
+        {/* <button onClick={() => setDarkMode(!darkMode)}>
           {darkMode ? (
             <Sun className="w-5 h-5 text-yellow-500" />
           ) : (
             <Moon className="w-5 h-5 text-gray-800 dark:text-white" />
           )}
-        </button>
+        </button> */}
 
         {session ? (
           <div className="flex items-center gap-2 text-sm text-gray-800 dark:text-white">
-            👋 {session.user?.name ?? session.user?.email}
+            {session.user?.name ?? session.user?.email}
             <button
               onClick={() => signOut()}
               className="px-2 py-1 border rounded text-xs hover:bg-gray-100 dark:hover:bg-gray-700"
