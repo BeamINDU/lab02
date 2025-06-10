@@ -77,75 +77,57 @@ export default function ProductTypeColumns({
     },
     {
       accessorKey: "productTypeId",
-      header: "Product Type ID",
+      header: "Invoice Date",
     },
     {
       accessorKey: "productTypeName",
-      header: "Production Type Name",
+      header: "Invoice No.",
     },
     {
       accessorKey: "description",
-      header: "Description",
-    },
-    {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ getValue }) => {
-        const value = getValue() as boolean;
-        const isActive = value === true;
-        return (
-          <span
-            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-sm font-medium ${
-              isActive
-                ? 'bg-green-100 text-green-800'
-                : 'bg-red-100 text-red-800'
-            }`}
-          >
-            {isActive ? 'Active' : 'Inactive'}
-          </span>
-        );
-      },
+      header: "Seller Name",
     },    
     {
       accessorKey: "createdBy",
-      header: "Created By",
-    },
-    {
-      accessorKey: "createdDate",
-      header: "Created Date",
-      cell: ({ getValue }) => {
-        const rawValue = getValue() as string | number | Date | null | undefined;
-        const formattedDate = formatDateTime(rawValue);
-        return <div className="text-center">{formattedDate}</div>;
-      },
+      header: "Seller Tax ID",
     },
     {
       accessorKey: "updatedBy",
-      header: "Updated By",
+      header: "Branch",
     },
     {
       accessorKey: "updatedDate",
-      header: "Updated Date",
-      cell: ({ getValue }) => {
-        const rawValue = getValue() as string | number | Date | null | undefined;
-        const formattedDate = formatDateTime(rawValue);
-        return <div className="text-center">{formattedDate}</div>;
-      },
+      header: "Product Value",
     },
     {
+      id: "actions",
+      header: "Vat",
+    },
+    {
+      id: "actions",
+      header: "Total Amount",
+    },
+     {
+      id: "actions",
+      header: "Filename",
+    },
+        {
       id: "actions",
       header: "Actions",
       cell: ({ row }) => (
         <div className="flex items-center justify-center gap-2">
           <button 
             className="flex items-center gap-1 text-xs px-3 py-1 rounded btn-primary"
-            onClick={() => openEditModal(row.original)}
+            onClick={() => openDetailModal(row.original)}
           >
-            {canEdit ? 'Edit' : 'Detail'}
-            <SquarePen size={16} />
+            {canEdit ? 'Detail' : 'View'}
+            <Eye size={16} />
           </button>
         </div>
-      )
+      ),
+      meta: {
+        style: { width: "8%" },
+      },
     },
   ];
 }
