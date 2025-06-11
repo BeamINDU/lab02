@@ -1,184 +1,216 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import AccountingColumns, { AccountingData } from "./accounting-column";
-
-// Mock data สำหรับ demo ตามภาพ
-const mockData: AccountingData[] = [
-  {
-    id: "1",
-    invoiceDate: "RVG0325-037",
-    invoiceNo: "RVG0325-037", 
-    sellerName: "นบอน แคนดี้ ช็อคโกแลต คิทแคท",
-    sellerTaxId: "0105533066170",
-    branch: "-",
-    productValue: 10000.00,
-    vat: 700.00,
-    totalAmount: 10700.00,
-    filename: "testfile.jpg"
-  },
-  {
-    id: "2",
-    invoiceDate: "2025-02-10",
-    invoiceNo: "YT250200322",
-    sellerName: "นบอน วาฟเฟอร์ กลิ่นแบนิลา", 
-    sellerTaxId: "0105533066170",
-    branch: "00000",
-    productValue: 1236.00,
-    vat: 86.52,
-    totalAmount: 1322.52,
-    filename: "page4.jpg"
-  }
-];
+import React, { useState, useRef, useEffect, ChangeEvent } from "react";
+import useToast from "@/app/hooks/useToast";
+import { useRouter } from "next/navigation";
+import { useSelector, useDispatch } from 'react-redux';
+import { readFileAsBase64, convertBase64ToBlobUrl } from '@/app/lib/utils/file';
+import { convertFileSizeToMB } from "@/app/lib/utils/format";
+import { SourceFileData, ParamOcrRequest } from "@/app/lib/interfaces"
+import { selectAllSourceFiles } from '@/app/store/file/fileSelectors';
+import { addFiles, clearFiles } from '@/app/store/file/fileActions';
+import SourceFileTable from "@/app/components/ocr/SourceFileTable";
+import PreviewFile from "@/app/components/ocr/PreviewFile";
+import Processing from "@/app/components/processing/Processing";
+import { ocrReader } from '@/app/lib/api/ocr';
 
 export default function AccountingPage() {
-  const { register, getValues, setValue, reset, control } = useForm(); 
-  const [data, setData] = useState<AccountingData[]>([]);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [editingData, setEditingData] = useState<AccountingData | null>(null);
-  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const { toastSuccess, toastError } = useToast();
+  const router = useRouter();
+  const dispatch = useDispatch();
+  const sourceFiles = useSelector(selectAllSourceFiles);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [filePreview, setFilePreview] = useState<SourceFileData | null>(null);
+  const [processing, setProcessing] = useState(false);
+  const [loading , setLoading ] = useState(false);
 
-  useEffect(() => {
-    handleSearch();
-  }, []);
 
-  const handleSearch = async () => {
-    try {
-      // ใช้ mock data แทน API call
-      setData(mockData);
-    } catch (error) {
-      console.error("Error search accounting:", error);
-      setData([]);
+  // Handlers for Add
+  const handleAdd = () => {
+    fileRef.current?.click();
+  };
+
+  // Handlers for Edit
+  const handleEdit = (id: number) => {
+    const fileToUpdate = sourceFiles.find(file => file.id === id);
+    if (!fileToUpdate) return;
+  
+    if (filePreview?.id === fileToUpdate.id) {
+      setFilePreview(null);
+      // setFilePreview(fileToUpdate);
     }
   };
 
-  const handleBack = () => {
-    // Navigate back functionality
-    window.history.back();
+  // Handlers for Delete
+  const handleDelete = (id: number) => {
+    const fileToDelete = sourceFiles.find(file => file.id === id);
+    if (!fileToDelete) return;
+  
+    if (filePreview?.id === fileToDelete.id) {
+      setFilePreview(null);
+    }
   };
 
-  const handleSave = () => {
-    // Save functionality
-    alert('Save functionality will be implemented');
+  // Handlers for PreviewFile
+  const handlePreviewFile = (file: SourceFileData) => {
+    setFilePreview(file);
   };
 
-  const handleDetail = async (row?: AccountingData) => {
-    try {
-      if (row) {
-        setEditingData(row); 
-        // ในอนาคตสามารถเรียก API detail ได้ที่นี่
-        alert(`Checking file: ${row.filename}`);
-      } else {
-        reset();
-        setEditingData(null);
+  // Handlers for FileChange
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+
+    if (files.length === 0) {
+      toastError("No files selected.");
+      return;
+    }
+
+    const allowedExtensions = ["pdf", "png", "jpg", "jpeg"];
+    const maxSizeMB = 10;
+    const allResults: SourceFileData[] = [];
+
+    for (const file of files) {
+      const fileExtension = file.name.split(".").pop()?.toLowerCase() || "";
+      const fileSizeInMB = convertFileSizeToMB(file.size);
+
+      if (!allowedExtensions.includes(fileExtension)) {
+        toastError(`Invalid file type for ${file.name}. Only PDF, PNG, JPG, and JPEG are allowed.`);
+        continue;
       }
-      // สามารถเปิด modal ได้ที่นี่
-      // setIsFormModalOpen(true);
-    } catch (error) {
-      console.error('Failed to load detail:', error);
-      alert('Failed to load details');
+
+      if (parseFloat(fileSizeInMB) > maxSizeMB) {
+        toastError(`File ${file.name} is too large. Max size is ${maxSizeMB} MB.`);
+        continue;
+      }
+
+      const base64Data = await readFileAsBase64(file);
+
+      const rawResult: SourceFileData = {
+        id: Date.now(),
+        fileName: file.name,
+        fileType: file.type,
+        base64Data: base64Data,
+        blobUrl: fileExtension === "pdf" ? URL.createObjectURL(file) : convertBase64ToBlobUrl(base64Data),
+      };
+
+      allResults.push(rawResult);
     }
+
+    if (allResults.length > 0) {
+      dispatch(addFiles(allResults));
+      toastSuccess(`${allResults.length} file(s) added successfully.`);
+    }
+
+    e.target.value = "";
+  };
+   
+  // Handlers for StartProcess
+  const handleStartProcess = async () => {
+    //  ไปหน้าaccounting-summary.tsx
   };
 
-  // เพิ่ม row number ให้กับข้อมูล
-  const dataWithRowNumbers = data.map((item, index) => ({
-    ...item,
-    no: index + 1
-  }));
-
+  const processOcr = async () => {
+    try {
+      const param: ParamOcrRequest[] = sourceFiles?.map(file => ({
+        fileName: file.fileName,
+        fileType: file.fileType,
+        base64Data: file.base64Data,
+      })) ?? [];
+    
+      console.log("ParamOcrRequest:", param); 
+      const response: SourceFileData[] = await ocrReader(param);
+      console.log("OcrResult:", response); 
+  
+      const ocrResult = response?.map((file) => ({
+        ...file,
+        blobUrl: file.base64Data ? convertBase64ToBlobUrl(file.base64Data) : '',
+        ocrResult: file.ocrResult?.map((page) => ({
+          ...page,
+          blobUrl: page.base64Data ? convertBase64ToBlobUrl(page.base64Data) : '',
+        })) ?? [],
+      }));
+  
+      dispatch(clearFiles());
+      dispatch(addFiles(ocrResult));
+  
+      return ocrResult;
+    } catch (error) {
+      console.error("[OCR] Failed during processOcr:", error);
+      throw error;
+    }
+  };
+  
+  
   return (
-    <>
-      {/* Header with Back and Save buttons */}
-      <div className="flex justify-between items-center mb-6 px-4">
-        <button
-          onClick={handleBack}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded text-sm font-medium"
-        >
-          Back
-        </button>
-        
-        <h2 className="text-xl font-bold">Summary Report</h2>
-        
-        <button
-          onClick={handleSave}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded text-sm font-medium"
-        >
-          Save
-        </button>
+    <div className="flex flex-col p-2 h-full">
+      {/* Source Add Button && Input Language Selection */}
+      <div className="grid grid-cols-1 md:grid-cols-2">
+        {/* Source Add Button */}
+        <div className="flex flex-col">
+          <div className="mb-4 flex flex-col sm:flex-row sm:space-x-2 space-y-2 sm:space-y-0 w-full">
+            <button
+              onClick={handleAdd}
+              className="text-white bg-[#0369A1] hover:bg-blue-600 font-semibold px-4 py-2 rounded-md text-sm w-full sm:w-24"
+            >
+              Add
+            </button>
+            <input
+              multiple
+              ref={fileRef}
+              type="file"
+              accept=".pdf,.png,.jpg,.jpeg"
+              capture="environment"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+          </div>
+        </div>
+        {/* Input Language Selection & Start Process */}
+        <div className="flex flex-col">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-4 mb-4 w-full">
+            <button
+              onClick={handleStartProcess}
+              className="text-white bg-[#0369A1] hover:bg-blue-600 font-semibold px-4 py-2 rounded-md text-sm w-full md:w-auto md:ml-auto disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={processing}
+            >
+              {processing ? `Processing...` : `Start Process`}
+            </button>
+          </div>
+        </div>
       </div>
 
-      <div className="p-4 mx-auto">
-        {/* DataTable using AccountingColumns */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-blue-200 text-sm font-medium">
-                {AccountingColumns({
-                  showCheckbox: false, // ปิด checkbox ตามภาพ
-                  canEdit: true,
-                  openDetailModal: handleDetail,
-                  selectedIds,
-                  setSelectedIds,
-                  data: dataWithRowNumbers,
-                }).map((column, index) => (
-                  <th 
-                    key={index}
-                    className="border border-gray-300 px-4 py-3 text-left text-black"
-                    style={column.meta?.style}
-                  >
-                    {typeof column.header === 'function' ? column.header({} as any) : column.header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {dataWithRowNumbers.map((row, rowIndex) => (
-                <tr key={row.id} className={`text-sm ${rowIndex % 2 === 1 ? 'bg-gray-50' : 'bg-white'}`}>
-                  {AccountingColumns({
-                    showCheckbox: false,
-                    canEdit: true, 
-                    openDetailModal: handleDetail,
-                    selectedIds,
-                    setSelectedIds,
-                    data: dataWithRowNumbers,
-                  }).map((column, colIndex) => (
-                    <td 
-                      key={colIndex}
-                      className="border border-gray-300 px-4 py-3"
-                      style={column.meta?.style}
-                    >
-                      {column.cell ? 
-                        column.cell({ 
-                          getValue: () => row[column.accessorKey as keyof AccountingData],
-                          row: { original: row },
-                        } as any) : 
-                        row[column.accessorKey as keyof AccountingData]
-                      }
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Form Modal Placeholder */}
-        {isFormModalOpen && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white p-6 rounded shadow-lg">
-              <h3 className="text-lg font-bold mb-4">Detail Modal</h3>
-              <p>File: {editingData?.filename}</p>
-              <button 
-                className="mt-4 px-4 py-2 bg-gray-500 text-white rounded"
-                onClick={() => setIsFormModalOpen(false)}
-              >
-                Close
-              </button>
+      {/* Source File Section && Preview Section */}
+      <div className="h-full flex flex-col">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 h-full">
+          {/* SourceFileTable Section */}
+          <div className="border rounded-xl shadow-md p-4 flex flex-col h-full">
+            <h2 className="text-lg font-bold text-black mb-2">Source File</h2>
+            <div className="flex-1 max-h-[76vh] overflow-auto">
+              <SourceFileTable 
+                sourceFiles={sourceFiles} 
+                onPreview={handlePreviewFile} 
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                loading={loading}
+              />
             </div>
           </div>
-        )}
+          {/* PreviewFile Section */}
+          <div className="border rounded-xl shadow-md p-4 flex flex-col h-full">
+            <div className="flex-1 overflow-auto">
+              <PreviewFile 
+                key={filePreview?.id}
+                type={filePreview?.fileType} 
+                url={filePreview?.blobUrl} 
+              />
+            </div>
+          </div>
+        </div>
       </div>
-    </>
-  )
+
+      {/* processing */}
+      {processing && ( <Processing/>)}
+      
+    </div>
+  );
 }

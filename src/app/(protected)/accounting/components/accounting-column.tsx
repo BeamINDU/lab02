@@ -1,26 +1,13 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { Eye } from "lucide-react";
-
-// สร้าง interface สำหรับข้อมูล accounting ตามภาพ
-export interface AccountingData {
-  id: string;
-  invoiceDate: string;
-  invoiceNo: string;
-  sellerName: string;
-  sellerTaxId: string;
-  branch: string;
-  productValue: number;
-  vat: number;
-  totalAmount: number;
-  filename: string;
-}
+import { Accounting } from "@/app/type/accounting";
 
 interface AccountingColumnProps {
   showCheckbox?: boolean;
-  openDetailModal: (row?: AccountingData) => void;
+  openDetailModal: (row?: Accounting) => void;
   selectedIds: string[];
   setSelectedIds: (updater: (prevState: string[]) => string[]) => void; 
-  data: AccountingData[];
+  data: Accounting[];
   canEdit: boolean
 }
 
@@ -31,7 +18,7 @@ export default function AccountingColumns({
   setSelectedIds,
   data,
   canEdit
-}: AccountingColumnProps): ColumnDef<AccountingData>[] {
+}: AccountingColumnProps): ColumnDef<Accounting>[] {
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) =>
@@ -42,10 +29,10 @@ export default function AccountingColumns({
   const toggleSelectAll = () => {
     setSelectedIds((prev: string[]) =>
       prev.length === data.length
-        ? [] // If all items are selected, unselect all
+        ? [] 
         : data
           .map((item) => item.id) // Map to ids
-          .filter((id): id is string => id !== undefined) // Filter out undefined values
+          .filter((id): id is string => id !== undefined) 
     );
   };
 
@@ -87,42 +74,42 @@ export default function AccountingColumns({
       header: "No.",
       enableSorting: false,
       meta: {
-        style: { width: "5%" },
+        style: { width: "50px", minWidth: "50px" },
       },
     },
     {
       accessorKey: "invoiceDate",
       header: "Invoice Date",
       meta: {
-        style: { width: "12%" },
+        style: { width: "120px", minWidth: "120px" },
       },
     },
     {
       accessorKey: "invoiceNo",
       header: "Invoice No.",
       meta: {
-        style: { width: "12%" },
+        style: { width: "130px", minWidth: "130px" },
       },
     },
     {
       accessorKey: "sellerName",
       header: "Seller Name",
       meta: {
-        style: { width: "20%" },
+        style: { width: "180px", minWidth: "160px" },
       },
     },
     {
       accessorKey: "sellerTaxId",
       header: "Seller Tax ID",
       meta: {
-        style: { width: "12%" },
+        style: { width: "130px", minWidth: "130px" },
       },
     },
     {
       accessorKey: "branch",
       header: "Branch",
       meta: {
-        style: { width: "8%" },
+        style: { width: "70px", minWidth: "70px" },
       },
     },
     {
@@ -130,10 +117,10 @@ export default function AccountingColumns({
       header: "Product Value",
       cell: ({ getValue }) => {
         const value = getValue() as number;
-        return <div className="text-right">{value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>;
+        return <div className="text-right pr-2">{value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>;
       },
       meta: {
-        style: { width: "10%" },
+        style: { width: "110px", minWidth: "110px" },
       },
     },
     {
@@ -141,10 +128,10 @@ export default function AccountingColumns({
       header: "Vat",
       cell: ({ getValue }) => {
         const value = getValue() as number;
-        return <div className="text-right">{value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>;
+        return <div className="text-right pr-2">{value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>;
       },
       meta: {
-        style: { width: "8%" },
+        style: { width: "90px", minWidth: "90px" },
       },
     },
     {
@@ -152,20 +139,26 @@ export default function AccountingColumns({
       header: "Total Amount", 
       cell: ({ getValue }) => {
         const value = getValue() as number;
-        return <div className="text-right">{value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>;
+        return <div className="text-right pr-2">{value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>;
       },
       meta: {
-        style: { width: "10%" },
+        style: { width: "120px", minWidth: "120px" },
       },
     },
     {
       accessorKey: "filename",
       header: "Filename",
+      meta: {
+        style: { width: "120px", minWidth: "120px" },
+      },
+    },
+    {
+      id: "actions",
+      header: "Actions",
       cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <span className="text-sm">{row.original.filename}</span>
+        <div className="flex items-center justify-center">
           <button 
-            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium"
+            className="bg-[#0369A1] hover:bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium"
             onClick={() => openDetailModal(row.original)}
           >
             CHECK
@@ -173,7 +166,7 @@ export default function AccountingColumns({
         </div>
       ),
       meta: {
-        style: { width: "13%" },
+        style: { width: "80px", minWidth: "80px" },
       },
     },
   ];
