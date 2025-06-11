@@ -1,25 +1,37 @@
 import { ColumnDef } from "@tanstack/react-table";
-import { SquarePen } from "lucide-react";
-import { ProductType } from "@/app/types/product-type"
-import { formatDateTime } from "@/app/utils/date";
+import { Eye } from "lucide-react";
 
-interface ProductTypeColumnProps {
+// สร้าง interface สำหรับข้อมูล accounting ตามภาพ
+export interface AccountingData {
+  id: string;
+  invoiceDate: string;
+  invoiceNo: string;
+  sellerName: string;
+  sellerTaxId: string;
+  branch: string;
+  productValue: number;
+  vat: number;
+  totalAmount: number;
+  filename: string;
+}
+
+interface AccountingColumnProps {
   showCheckbox?: boolean;
-  openEditModal: (row?: ProductType) => void;
+  openDetailModal: (row?: AccountingData) => void;
   selectedIds: string[];
   setSelectedIds: (updater: (prevState: string[]) => string[]) => void; 
-  data: ProductType[];
+  data: AccountingData[];
   canEdit: boolean
 }
 
-export default function ProductTypeColumns({
+export default function AccountingColumns({
   showCheckbox,
-  openEditModal, 
+  openDetailModal, 
   selectedIds,
   setSelectedIds,
   data,
   canEdit
-}: ProductTypeColumnProps): ColumnDef<ProductType>[] {
+}: AccountingColumnProps): ColumnDef<AccountingData>[] {
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) =>
@@ -72,80 +84,97 @@ export default function ProductTypeColumns({
       : []),
     {
       accessorKey: "no",
-      header: "No",
+      header: "No.",
       enableSorting: false,
-    },
-    {
-      accessorKey: "productTypeId",
-      header: "Product Type ID",
-    },
-    {
-      accessorKey: "productTypeName",
-      header: "Production Type Name",
-    },
-    {
-      accessorKey: "description",
-      header: "Description",
-    },
-    {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ getValue }) => {
-        const value = getValue() as boolean;
-        const isActive = value === true;
-        return (
-          <span
-            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-sm font-medium ${
-              isActive
-                ? 'bg-green-100 text-green-800'
-                : 'bg-red-100 text-red-800'
-            }`}
-          >
-            {isActive ? 'Active' : 'Inactive'}
-          </span>
-        );
-      },
-    },    
-    {
-      accessorKey: "createdBy",
-      header: "Created By",
-    },
-    {
-      accessorKey: "createdDate",
-      header: "Created Date",
-      cell: ({ getValue }) => {
-        const rawValue = getValue() as string | number | Date | null | undefined;
-        const formattedDate = formatDateTime(rawValue);
-        return <div className="text-center">{formattedDate}</div>;
+      meta: {
+        style: { width: "5%" },
       },
     },
     {
-      accessorKey: "updatedBy",
-      header: "Updated By",
-    },
-    {
-      accessorKey: "updatedDate",
-      header: "Updated Date",
-      cell: ({ getValue }) => {
-        const rawValue = getValue() as string | number | Date | null | undefined;
-        const formattedDate = formatDateTime(rawValue);
-        return <div className="text-center">{formattedDate}</div>;
+      accessorKey: "invoiceDate",
+      header: "Invoice Date",
+      meta: {
+        style: { width: "12%" },
       },
     },
     {
-      id: "actions",
-      header: "Actions",
+      accessorKey: "invoiceNo",
+      header: "Invoice No.",
+      meta: {
+        style: { width: "12%" },
+      },
+    },
+    {
+      accessorKey: "sellerName",
+      header: "Seller Name",
+      meta: {
+        style: { width: "20%" },
+      },
+    },
+    {
+      accessorKey: "sellerTaxId",
+      header: "Seller Tax ID",
+      meta: {
+        style: { width: "12%" },
+      },
+    },
+    {
+      accessorKey: "branch",
+      header: "Branch",
+      meta: {
+        style: { width: "8%" },
+      },
+    },
+    {
+      accessorKey: "productValue",
+      header: "Product Value",
+      cell: ({ getValue }) => {
+        const value = getValue() as number;
+        return <div className="text-right">{value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>;
+      },
+      meta: {
+        style: { width: "10%" },
+      },
+    },
+    {
+      accessorKey: "vat",
+      header: "Vat",
+      cell: ({ getValue }) => {
+        const value = getValue() as number;
+        return <div className="text-right">{value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>;
+      },
+      meta: {
+        style: { width: "8%" },
+      },
+    },
+    {
+      accessorKey: "totalAmount",
+      header: "Total Amount", 
+      cell: ({ getValue }) => {
+        const value = getValue() as number;
+        return <div className="text-right">{value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>;
+      },
+      meta: {
+        style: { width: "10%" },
+      },
+    },
+    {
+      accessorKey: "filename",
+      header: "Filename",
       cell: ({ row }) => (
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-sm">{row.original.filename}</span>
           <button 
-            className="flex items-center gap-1 text-xs px-3 py-1 rounded btn-primary"
-            onClick={() => openEditModal(row.original)}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium"
+            onClick={() => openDetailModal(row.original)}
           >
-            {canEdit ? 'Edit' : 'Detail'}
-            <SquarePen size={16} />
+            CHECK
           </button>
         </div>
-      )
+      ),
+      meta: {
+        style: { width: "13%" },
+      },
     },
   ];
 }

@@ -1,7 +1,7 @@
 "use client";
 
-// import AccountingPage from "./components/AccountingPage";
+import AccountingPage from "./components/accountingPage";
 
 export default function Page() { 
-  return (<accountingPage />);
+  return <AccountingPage />;
 }
