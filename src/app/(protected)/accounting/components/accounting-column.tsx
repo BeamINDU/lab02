@@ -117,7 +117,7 @@ export default function AccountingColumns({
       header: "Product Value",
       cell: ({ getValue }) => {
         const value = getValue() as number;
-        return <div className="text-right pr-2">{value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>;
+        return <div className="text-left pr-2">{value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>;
       },
       meta: {
         style: { width: "110px", minWidth: "110px" },
@@ -128,7 +128,7 @@ export default function AccountingColumns({
       header: "Vat",
       cell: ({ getValue }) => {
         const value = getValue() as number;
-        return <div className="text-right pr-2">{value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>;
+        return <div className="text-left pr-2">{value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>;
       },
       meta: {
         style: { width: "90px", minWidth: "90px" },
@@ -139,7 +139,7 @@ export default function AccountingColumns({
       header: "Total Amount", 
       cell: ({ getValue }) => {
         const value = getValue() as number;
-        return <div className="text-right pr-2">{value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>;
+        return <div className="text-left pr-2">{value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>;
       },
       meta: {
         style: { width: "120px", minWidth: "120px" },

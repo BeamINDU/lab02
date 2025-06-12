@@ -1,3 +1,4 @@
+// src/app/lib/interfaces.ts
 
 export interface SourceFileData {
   id: number;
@@ -6,7 +7,7 @@ export interface SourceFileData {
   fileName: string;
   fileType: string;
   base64Data: string;
-  ocrResult?: OcrResult [];
+  ocrResult?: OcrResult[];
   targetLanguage?: string;
   transId?: number;
   blobUrl?: string;
@@ -19,8 +20,20 @@ export interface OcrResult {
   extractedText?: string;
   translateText?: string;
   blobUrl?: string;
+  reportData?: AccountingReportData; 
 }
 
+
+export interface AccountingReportData {
+  invoiceDate: string;
+  invoiceNo: string;
+  sellerName: string;
+  sellerTaxId: string;
+  branch: string;
+  productValue: string;
+  vat: string;
+  totalAmount: string;
+}
 
 export interface ParamOcrRequest {
   fileName: string;
@@ -34,23 +47,10 @@ export interface ParamSaveOcrRequest {
   fileName: string;
   fileType: string;
   base64Data: string;
-  ocrResult: OcrResult [];
-  userId: string 
+  ocrResult: OcrResult[];
+  userId: string;
 }
 
 export interface ParamSaveTranslateRequest extends SourceFileData {
-  userId: string 
+  userId: string;
 }
-
-// export interface ParamSaveTranslateRequest {
-//   ocrId?: number;
-//   fileId?: number;
-//   fileName: string;
-//   fileType: string;
-//   base64Data: string;
-//   ocrResult?: OcrResult [];
-//   blobUrl?: string;
-//   targetLanguage?: string;
-//   transId?: number;
-//   userId: string 
-// }
