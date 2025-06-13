@@ -1,13 +1,13 @@
 // src/app/(protected)/accounting/components/accountingPage.tsx
 "use client";
 
-import React, { useState, useRef, useEffect, ChangeEvent } from "react";
+import React, { useState, useRef, ChangeEvent } from "react";
 import useToast from "@/app/hooks/useToast";
 import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from 'react-redux';
-import { readFileAsBase64, convertBase64ToBlobUrl, validateBase64, getBase64Size, resizeImage, shouldResizeImage, formatFileSize } from '@/app/lib/utils/file';
+import { readFileAsBase64, convertBase64ToBlobUrl } from '@/app/lib/utils/file';
 import { convertFileSizeToMB } from "@/app/lib/utils/format";
-import { SourceFileData, ParamOcrRequest } from "@/app/lib/interfaces"
+import { SourceFileData } from "@/app/lib/interfaces"
 import { selectAllSourceFiles } from '@/app/store/file/fileSelectors';
 import { addFiles, clearFiles } from '@/app/store/file/fileActions';
 import SourceFileTable from "@/app/components/ocr/SourceFileTable";
@@ -79,292 +79,242 @@ export default function AccountingPage() {
     setFilePreview(file);
   };
 
-  // Handlers for FileChange - เพิ่มการ validate base64
-  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
 
-    if (files.length === 0) {
-      toastError("No files selected.");
-      return;
+// Handlers for FileChange
+const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+  const files = Array.from(e.target.files ?? []);
+
+  if (files.length === 0) {
+    toastError("No files selected.");
+    return;
+  }
+
+  // เตือนเมื่อเลือกหลายไฟล์
+  if (files.length > 1) {
+    toastWarning(`Selected ${files.length} files - System will process one by one to save GPU memory`);
+  }
+
+  const allowedExtensions = ["pdf", "png", "jpg", "jpeg"];
+  const maxSizeMB = 10;
+  const allResults: SourceFileData[] = [];
+
+  for (const file of files) {
+    const fileExtension = file.name.split(".").pop()?.toLowerCase() || "";
+    const fileSizeInMB = convertFileSizeToMB(file.size);
+
+    if (!allowedExtensions.includes(fileExtension)) {
+      toastError(`Invalid file type for ${file.name}. Only PDF, PNG, JPG, and JPEG are allowed.`);
+      continue;
     }
 
-    const allowedExtensions = ["pdf", "png", "jpg", "jpeg"];
-    const maxSizeMB = 10;
-    const allResults: SourceFileData[] = [];
+    if (parseFloat(fileSizeInMB) > maxSizeMB) {
+      toastError(`File ${file.name} is too large. Max size is ${maxSizeMB} MB.`);
+      continue;
+    }
 
-    for (const file of files) {
-      const fileExtension = file.name.split(".").pop()?.toLowerCase() || "";
-      const fileSizeInMB = convertFileSizeToMB(file.size);
+    try {
+      const base64Data = await readFileAsBase64(file);
+      
+      console.log(`File: ${file.name}, Size: ${file.size} bytes`);
 
-      if (!allowedExtensions.includes(fileExtension)) {
-        toastError(`Invalid file type for ${file.name}. Only PDF, PNG, JPG, and JPEG are allowed.`);
-        continue;
-      }
+      const rawResult: SourceFileData = {
+        id: Date.now() + Math.random(),
+        fileName: file.name,
+        fileType: file.type,
+        base64Data: base64Data,
+        blobUrl: fileExtension === "pdf" ? URL.createObjectURL(file) : convertBase64ToBlobUrl(base64Data),
+      };
 
-      if (parseFloat(fileSizeInMB) > maxSizeMB) {
-        toastError(`File ${file.name} is too large. Max size is ${maxSizeMB} MB.`);
-        continue;
-      }
+      allResults.push(rawResult);
+    } catch (error) {
+      console.error(`Error processing file ${file.name}:`, error);
+      toastError(`Failed to process ${file.name}. ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
 
+  if (allResults.length > 0) {
+    dispatch(addFiles(allResults));
+    toastSuccess(`Added ${allResults.length} file(s) successfully`);
+    
+    // เตือนเกี่ยวกับการประมวลผลหลายไฟล์
+    if (allResults.length > 1) {
+      toastInfo(`${allResults.length} files in queue - Will process one by one to prevent GPU memory overflow`);
+    }
+  }
+
+  e.target.value = "";
+};
+
+// Handlers for StartProcess
+const handleStartProcess = async () => {
+  if (!sourceFiles || sourceFiles.length === 0) {
+    toastError("No source file.");
+    return;
+  }
+
+  try {
+    setProcessing(true);
+    
+    // เรียก API สำหรับ Accounting OCR
+    await processAccountingOcr();
+    
+    toastSuccess("Accounting OCR processing completed.");
+    
+    // นำทางไปหน้า accounting summary
+    router.push('/accounting/summary');
+    
+  } catch (error) {
+    console.error("Error during Accounting OCR processing", error);
+    toastError("Failed to process Accounting OCR. Please try again.");
+  } finally {
+    setProcessing(false);
+  }
+};
+
+// ฟังก์ชันสำหรับเรียก Accounting OCR API
+const processAccountingOcr = async () => {
+  try {
+    const results: any[] = [];
+    
+    console.log(`[Accounting OCR] Processing ${sourceFiles.length} files (one by one)`);
+    toastInfo(`Processing ${sourceFiles.length} file(s) one by one`);
+    
+    for (let i = 0; i < sourceFiles.length; i++) {
+      const file = sourceFiles[i];
+      
       try {
-        let processedFile = file;
+        console.log(`[${i + 1}/${sourceFiles.length}] Processing: ${file.fileName}`);
+        
+        // แสดงประเภทไฟล์และเตือนเรื่องเวลา
+        const isPdf = file.fileType === 'application/pdf';
+        const estimatedTime = isPdf ? '3-5 minutes' : '30-60 seconds';
+        toastInfo(`Processing ${file.fileName} (${i + 1}/${sourceFiles.length}) - Estimated: ${estimatedTime}`);
+        
+        // ส่งทีละไฟล์เดียว
+        const singleFileData = [{
+          fileName: file.fileName,
+          fileType: file.fileType,
+          base64Data: file.base64Data,
+        }];
 
-        // ถ้าเป็นรูปภาพและขนาดใหญ่เกินไป ให้ลดขนาด
-        if (file.type.startsWith('image/') && shouldResizeImage(file, 0.5)) {
-          console.log(`Resizing ${file.name} (${formatFileSize(file.size)}) to reduce GPU memory usage...`);
+        // กำหนด timeout ตาม frontend ด้วย
+        const timeoutMs = isPdf ? 300000 : 60000; // 5 นาที สำหรับ PDF
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+        const response = await fetch('/api/accounting-ocr', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify(singleFileData),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          console.error(`File ${file.fileName} failed:`, errorData);
           
-          try {
-            processedFile = await resizeImage(file, 800, 800, 0.7);
-            console.log(`Resized to: ${formatFileSize(processedFile.size)}`);
-            toastInfo(`Resized ${file.name} to reduce processing load`);
-          } catch (resizeError) {
-            console.warn(`Failed to resize ${file.name}, using original:`, resizeError);
-            toastWarning(`Could not resize ${file.name}, using original size`);
+          // จัดการ error แต่ละประเภท
+          if (errorData.details && errorData.details.includes('CUDA out of memory')) {
+            throw new Error('GPU_MEMORY_FULL');
+          } else if (errorData.details && errorData.details.includes('timeout')) {
+            toastError(`${file.fileName}: Processing timeout`);
+            continue;
+          } else if (response.status === 408) {
+            toastError(`${file.fileName}: Processing timeout`);
+            continue;
+          }
+          
+          toastError(`${file.fileName}: Processing failed (${errorData.error || 'Unknown error'})`);
+          continue; // ข้ามไฟล์นี้ ทำต่อ
+        }
+
+        const result = await response.json();
+        console.log(`[${i + 1}/${sourceFiles.length}] ${file.fileName} processed successfully`);
+        toastSuccess(`${file.fileName} completed`);
+        
+        results.push(...result);
+        
+        // รอ 3 วินาที เพื่อให้ GPU พักผ่อน (เพิ่มจาก 2 วินาที)
+        if (i < sourceFiles.length - 1) {
+          console.log(`Waiting 3 seconds for GPU cooldown...`);
+          toastInfo(`Waiting for GPU cooldown... (3 seconds)`);
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+        
+      } catch (fileError) {
+        console.error(`Error processing ${file.fileName}:`, fileError);
+        
+        if (fileError instanceof Error) {
+          if (fileError.message === 'GPU_MEMORY_FULL') {
+            toastError(`GPU Memory full! Stopped at ${file.fileName}`);
+            throw fileError;
+          } else if (fileError.name === 'AbortError') {
+            toastError(`${file.fileName}: Processing timeout (${file.fileType === 'application/pdf' ? '5 minutes' : '1 minute'})`);
+            continue;
           }
         }
-
-        const base64Data = await readFileAsBase64(processedFile);
         
-        // ตรวจสอบ base64 ที่ได้
-        if (!validateBase64(base64Data)) {
-          toastError(`Failed to encode ${file.name}. Invalid base64 format.`);
-          continue;
-        }
-
-        const base64Size = getBase64Size(base64Data);
-        console.log(`File: ${file.name}, Original: ${file.size} bytes, Processed: ${processedFile.size} bytes, Base64: ${base64Size} bytes`);
-
-        const rawResult: SourceFileData = {
-          id: Date.now() + Math.random(), // ป้องกัน ID ซ้ำ
-          fileName: file.name,
-          fileType: processedFile.type,
-          base64Data: base64Data,
-          blobUrl: fileExtension === "pdf" ? URL.createObjectURL(processedFile) : convertBase64ToBlobUrl(base64Data),
-        };
-
-        allResults.push(rawResult);
-      } catch (error) {
-        console.error(`Error processing file ${file.name}:`, error);
-        toastError(`Failed to process ${file.name}. ${error instanceof Error ? error.message : 'Unknown error'}`);
+        toastError(`${file.fileName}: Processing error`);
+        continue; // ทำต่อกับไฟล์ถัดไป
       }
     }
 
-    if (allResults.length > 0) {
-      dispatch(addFiles(allResults));
-      toastSuccess(`${allResults.length} file(s) added successfully.`);
+    if (results.length === 0) {
+      throw new Error('No files processed successfully');
     }
 
-    e.target.value = "";
-  };
-   
-  // ฟังก์ชันสำหรับทดสอบ base64 encoding
-  const testBase64Encoding = async () => {
-    console.log('Testing base64 encoding...');
+    console.log(`[Accounting OCR] Completed! ${results.length} files processed successfully`);
+    toastSuccess(`Processing completed! ${results.length}/${sourceFiles.length} file(s) successful`);
+
+    // แปลงข้อมูลจาก API ให้เป็นรูปแบบที่ระบบใช้งาน
+    const processedResults: SourceFileData[] = results.map((apiFile) => ({
+      id: apiFile.id,
+      fileName: apiFile.fileName,
+      fileType: apiFile.fileType,
+      base64Data: apiFile.base64Data,
+      blobUrl: convertBase64ToBlobUrl(apiFile.base64Data),
+      ocrResult: apiFile.ocrResult.map(page => ({
+        page: page.page,
+        base64Data: page.base64Data,
+        language: page.language,
+        extractedText: page.extractedText,
+        blobUrl: convertBase64ToBlobUrl(page.base64Data),
+        reportData: page.reportData,
+      })),
+    }));
+
+    dispatch(clearFiles());
+    dispatch(addFiles(processedResults));
+
+    return processedResults;
+
+  } catch (error) {
+    console.error("[Accounting OCR] Failed during processAccountingOcr:", error);
     
-    for (const file of sourceFiles) {
-      try {
-        console.log(`Testing file: ${file.fileName}`);
-        console.log(`File type: ${file.fileType}`);
-        console.log(`Base64 length: ${file.base64Data.length}`);
-        console.log(`Base64 validation: ${validateBase64(file.base64Data)}`);
-        console.log(`Base64 sample (first 100 chars): ${file.base64Data.substring(0, 100)}`);
-        
-        // ทดสอบ decode
-        try {
-          const decoded = atob(file.base64Data);
-          console.log(`Decode test successful, decoded length: ${decoded.length}`);
-        } catch (decodeError) {
-          console.error(`Decode test failed for ${file.fileName}:`, decodeError);
-        }
-        
-        console.log('---');
-      } catch (error) {
-        console.error(`Error testing ${file.fileName}:`, error);
+    if (error instanceof Error) {
+      if (error.message === 'GPU_MEMORY_FULL' || error.message.includes('CUDA out of memory')) {
+        toastError('GPU Memory full! Need to restart OCR service');
+        throw new Error('GPU memory full. Please contact system administrator to restart service');
+      } else if (error.message.includes('No files processed successfully')) {
+        throw new Error('No files processed successfully. Please try again with smaller files');
       }
     }
-  };
+    
+    throw error;
+  }
+};
 
-  // ฟังก์ชันแสดงคำแนะนำเมื่อเกิดปัญหา GPU memory
-  const showGpuMemoryTroubleshooting = () => {
-    const troubleshootingSteps = `
-🔧 วิธีแก้ปัญหา GPU Memory เต็ม:
 
-1. 📞 ติดต่อผู้ดูแลระบบให้ restart OCR service ที่ 192.168.128.40:8111
-2. ⏰ รอ 5-10 นาที แล้วลองใหม่ (ให้ memory คืนมาเอง)
-3. 📷 ใช้รูปภาพขนาดเล็กกว่า 200KB
-4. 🔄 ลองทีละไฟล์แทนการส่งหลายไฟล์พร้อมกัน
-
-💡 สาเหตุ: ระบบ OCR ใช้ GPU ในการประมวลผล และ GPU memory เต็ม
-`;
-
-    alert(troubleshootingSteps);
-    console.log(troubleshootingSteps);
-  };
-
-  // ฟังก์ชันสำหรับทดสอบการเชื่อมต่อกับ OCR service
-  const testConnectivity = async () => {
-    try {
-      console.log('Testing connectivity to OCR service...');
-      toastInfo('Testing connection to OCR service...');
-
-      const response = await fetch('/api/test-connectivity');
-      const result = await response.json();
-
-      console.log('Connectivity test result:', result);
-
-      if (result.success) {
-        toastSuccess('✅ OCR service is reachable!');
-        console.log('Service details:', result.details);
-      } else {
-        toastError(`❌ OCR service is not reachable: ${result.details.error}`);
-        console.error('Connection failed:', result.details);
-      }
-    } catch (error) {
-      console.error('Connectivity test error:', error);
-      toastError(`❌ Connectivity test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  };
-  const testSimpleApiCall = async () => {
-    try {
-      // สร้าง base64 ของรูปภาพขนาดเล็ก (1x1 pixel PNG)
-      const smallPngBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
-      
-      const testData = [{
-        fileName: "test-image.png",
-        fileType: "image/png", 
-        base64Data: smallPngBase64
-      }];
-
-      console.log('Testing simple API call with small PNG:', testData);
-
-      const response = await fetch('/api/accounting-ocr', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(testData),
-      });
-
-      const result = await response.json();
-      console.log('Simple API test result:', result);
-
-      if (!response.ok) {
-        console.error('Simple API test failed:', result);
-        toastError(`API Test Failed: ${result.error || 'Unknown error'}`);
-      } else {
-        console.log('Simple API test successful!');
-        toastSuccess('API Test Successful!');
-      }
-    } catch (error) {
-      console.error('Simple API test error:', error);
-      toastError(`API Test Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  };
-
-  // Handlers for StartProcess - เชื่อมต่อกับ API จริง
-  const handleStartProcess = async () => {
-    if (!sourceFiles || sourceFiles.length === 0) {
-      toastError("No source file.");
-      return;
-    }
-
-    try {
-      setProcessing(true);
-      
-      // เรียก API จริงสำหรับ Accounting OCR
-      await processAccountingOcr();
-      
-      toastSuccess("Accounting OCR processing completed.");
-      
-      // นำทางไปหน้า accounting summary
-      router.push('/accounting/summary');
-      
-    } catch (error) {
-      console.error("Error during Accounting OCR processing", error);
-      toastError("Failed to process Accounting OCR. Please try again.");
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  // ฟังก์ชันสำหรับเรียก Accounting OCR API ผ่าน proxy
-  const processAccountingOcr = async () => {
-    try {
-      // เตรียมข้อมูลสำหรับส่งไป API
-      const requestData = sourceFiles.map(file => ({
-        fileName: file.fileName,
-        fileType: file.fileType,
-        base64Data: file.base64Data,
-      }));
-
-      console.log("Sending request to Accounting OCR API via proxy:", requestData);
-
-      // เรียก API ผ่าน Next.js API proxy
-      const response = await fetch('/api/accounting-ocr', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(requestData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `API Error: ${response.status} ${response.statusText}`);
-      }
-
-      const apiResponse: AccountingOcrResponse[] = await response.json();
-      console.log("Accounting OCR API Response:", apiResponse);
-
-      // แปลงข้อมูลจาก API ให้เป็นรูปแบบที่ระบบใช้งาน
-      const processedResults: SourceFileData[] = apiResponse.map((apiFile) => ({
-        id: apiFile.id,
-        fileName: apiFile.fileName,
-        fileType: apiFile.fileType,
-        base64Data: apiFile.base64Data,
-        blobUrl: convertBase64ToBlobUrl(apiFile.base64Data),
-        ocrResult: apiFile.ocrResult.map(page => ({
-          page: page.page,
-          base64Data: page.base64Data,
-          language: page.language,
-          extractedText: page.extractedText,
-          blobUrl: convertBase64ToBlobUrl(page.base64Data),
-          // เพิ่มข้อมูล accounting ใน extractedText
-          reportData: page.reportData, // เก็บข้อมูล structured ไว้ใช้ในหน้า summary
-        })),
-      }));
-
-      // เก็บผลลัพธ์ไว้ใน Redux store เพื่อใช้ในหน้า summary
-      dispatch(clearFiles());
-      dispatch(addFiles(processedResults));
-
-      return processedResults;
-    } catch (error) {
-      console.error("[Accounting OCR] Failed during processAccountingOcr:", error);
-      
-      // จัดการข้อผิดพลาดแบบละเอียด
-      if (error instanceof Error) {
-        if (error.message.includes('CUDA out of memory')) {
-          toastError('❌ GPU Memory เต็ม - ระบบต้องการ restart');
-          showGpuMemoryTroubleshooting();
-          throw new Error('ระบบ OCR ขาด memory GPU กรุณาติดต่อผู้ดูแลระบบเพื่อ restart service');
-        } else if (error.message.includes('Cannot connect to OCR service')) {
-          throw new Error('ไม่สามารถเชื่อมต่อกับระบบ OCR ได้ กรุณาตรวจสอบการเชื่อมต่อเครือข่าย');
-        } else if (error.message.includes('API Error: 503')) {
-          throw new Error('ระบบ OCR ไม่พร้อมใช้งานในขณะนี้ กรุณาลองใหม่อีกครั้ง');
-        } else if (error.message.includes('API Error: 500')) {
-          throw new Error('เกิดข้อผิดพลาดในระบบ OCR อาจเป็นปัญหา memory หรือ GPU กรุณาลองใหม่');
-        }
-      }
-      
-      throw error;
-    }
-  };
   
   return (
     <div className="flex flex-col p-2 h-full">
-      {/* Source Add Button && Input Language Selection */}
+      {/* Source Add Button */}
       <div className="grid grid-cols-1 md:grid-cols-2">
         {/* Source Add Button */}
         <div className="flex flex-col">
@@ -386,40 +336,9 @@ export default function AccountingPage() {
             />
           </div>
         </div>
-        {/* Input Language Selection & Start Process */}
+        {/* Start Process */}
         <div className="flex flex-col">
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-2 mb-4 w-full">
-            {/* Debug buttons - สำหรับ development */}
-            {process.env.NODE_ENV === 'development' && (
-              <>
-                <button
-                  onClick={testConnectivity}
-                  className="text-white bg-green-500 hover:bg-green-600 font-semibold px-3 py-1 rounded-md text-xs w-full md:w-auto"
-                >
-                  Test Connection
-                </button>
-                <button
-                  onClick={testBase64Encoding}
-                  className="text-white bg-yellow-500 hover:bg-yellow-600 font-semibold px-3 py-1 rounded-md text-xs w-full md:w-auto"
-                  disabled={sourceFiles.length === 0}
-                >
-                  Test Base64
-                </button>
-                <button
-                  onClick={testSimpleApiCall}
-                  className="text-white bg-purple-500 hover:bg-purple-600 font-semibold px-3 py-1 rounded-md text-xs w-full md:w-auto"
-                >
-                  Test API
-                </button>
-                <button
-                  onClick={showGpuMemoryTroubleshooting}
-                  className="text-white bg-red-500 hover:bg-red-600 font-semibold px-3 py-1 rounded-md text-xs w-full md:w-auto"
-                >
-                  GPU Help
-                </button>
-              </>
-            )}
-            
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-4 mb-4 w-full">
             <button
               onClick={handleStartProcess}
               className="text-white bg-[#0369A1] hover:bg-blue-600 font-semibold px-4 py-2 rounded-md text-sm w-full md:w-auto md:ml-auto disabled:opacity-50 disabled:cursor-not-allowed"

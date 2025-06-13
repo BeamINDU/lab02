@@ -36,7 +36,6 @@ export default function AccountingForm({
     if (editingData) {
       setFormData(editingData);
     }
-
     setIsEditMode(false);
   }, [editingData]);
 
@@ -65,8 +64,8 @@ export default function AccountingForm({
     setShowModal(false);
   };
 
-  // Mock image URL for demo
-  const imageUrl = "/images/takumi-pic.png"; 
+
+  const imageUrl = editingData?.imageUrl || "/images/no-image-placeholder.png";
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
@@ -108,12 +107,26 @@ export default function AccountingForm({
           
           {/* Left Side - Image */}
           <div className="w-1/2 p-4 border-r">
-            <div className="w-full h-full border border-gray-300 flex items-center justify-center bg-gray-50">
-              <img 
-                src={imageUrl}
-                alt="Invoice Document"
-                className="max-w-full max-h-full object-contain"
-              />
+            <div className="w-full h-full border border-gray-300 flex items-center justify-center bg-gray-50 overflow-hidden">
+              {imageUrl && imageUrl !== "/images/no-image-placeholder.png" ? (
+                <img 
+                  src={imageUrl}
+                  alt="Invoice Document"
+                  className="max-w-full max-h-full object-contain"
+                  onError={(e) => {
+                    console.warn('Failed to load image:', imageUrl);
+                    (e.target as HTMLImageElement).src = "/images/no-image-placeholder.png";
+                  }}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center text-gray-500">
+                  <div className="text-4xl mb-2">📄</div>
+                  <div className="text-sm">No image available</div>
+                  <div className="text-xs text-gray-400 mt-1">
+                    {formData.filename || 'Unknown file'}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

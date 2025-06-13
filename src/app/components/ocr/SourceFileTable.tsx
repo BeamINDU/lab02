@@ -164,68 +164,71 @@ export default function SourceFileTable({
               <td colSpan={3} className="px-4 py-3 text-sm text-gray-500 text-center">Loading...</td>
             </tr>
           ) : (
-            sourceFiles?.map((item, index) => (
-              <tr
-                key={item.id}
-                className={`border-t transition ease-in-out duration-150 ${
-                  selectedIndex === index ? "bg-gray-200" : index % 2 === 0 ? "bg-gray-50" : "bg-white"
-                }`}
-                onClick={() => handleRowClick(index)}
-              >
-                <td className="px-4 py-2 text-sm text-gray-600 text-center">{index + 1}</td>
+            sourceFiles?.map((item, index) => {
+              const uniqueKey = `${item.fileName}-${item.fileType}-${index}`;
+              return (
+                <tr
+                  key={uniqueKey}
+                  className={`border-t transition ease-in-out duration-150 ${
+                    selectedIndex === index ? "bg-gray-200" : index % 2 === 0 ? "bg-gray-50" : "bg-white"
+                  }`}
+                  onClick={() => handleRowClick(index)}
+                >
+                  <td className="px-4 py-2 text-sm text-gray-600 text-center">{index + 1}</td>
 
-                <td className="px-4 py-2 text-sm text-gray-600" style={{ width: '80%' }}>
-                  {item.fileName}
-                </td>
+                  <td className="px-4 py-2 text-sm text-gray-600" style={{ width: '80%' }}>
+                    {item.fileName}
+                  </td>
 
-                {/* Actions */}
-                <td className="px-4 py-2">
-                  <div className="flex justify-end items-center space-x-2">
-                    {/* Preview */}
-                    <button
-                      className="p-2 bg-green-500 rounded-full hover:bg-green-600 transition text-white"
-                      onClick={(e) => {
-                        handleButtonClick(e);
-                        setSelectedIndex(index);
-                        onPreview(item);
-                      }}
-                      title="Preview"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
+                  {/* Actions */}
+                  <td className="px-4 py-2">
+                    <div className="flex justify-end items-center space-x-2">
+                      {/* Preview */}
+                      <button
+                        className="p-2 bg-green-500 rounded-full hover:bg-green-600 transition text-white"
+                        onClick={(e) => {
+                          handleButtonClick(e);
+                          setSelectedIndex(index);
+                          onPreview(item);
+                        }}
+                        title="Preview"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
 
-                    {/* Edit */}
-                    <button
-                      onClick={(e) => {
-                        handleButtonClick(e);
-                        handleShowEditModal(item)
-                      }}
-                      className={`p-2 rounded-full transition ${
-                        (item.fileType === "application/pdf" || (item.ocrResult && item.ocrResult.length > 0))
-                          ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                          : "bg-blue-500 text-white hover:bg-blue-600"
-                      }`}
-                      disabled={item.fileType === "application/pdf" || (item.ocrResult && item.ocrResult.length > 0)}
-                      title="Edit"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
+                      {/* Edit */}
+                      <button
+                        onClick={(e) => {
+                          handleButtonClick(e);
+                          handleShowEditModal(item)
+                        }}
+                        className={`p-2 rounded-full transition ${
+                          (item.fileType === "application/pdf" || (item.ocrResult && item.ocrResult.length > 0))
+                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                            : "bg-blue-500 text-white hover:bg-blue-600"
+                        }`}
+                        disabled={item.fileType === "application/pdf" || (item.ocrResult && item.ocrResult.length > 0)}
+                        title="Edit"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
 
-                    {/* Delete */}
-                    <button
-                      onClick={(e) => {
-                        handleButtonClick(e);
-                        handleShowDeleteModal(index);
-                      }}
-                      className="p-2 bg-red-500 rounded-full hover:bg-red-600 transition text-white"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))
+                      {/* Delete */}
+                      <button
+                        onClick={(e) => {
+                          handleButtonClick(e);
+                          handleShowDeleteModal(index);
+                        }}
+                        className="p-2 bg-red-500 rounded-full hover:bg-red-600 transition text-white"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })
           )}
           </tbody>
         </table>

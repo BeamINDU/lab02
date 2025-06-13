@@ -1,4 +1,3 @@
-// src/app/api/accounting-ocr/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -6,24 +5,25 @@ export async function POST(request: NextRequest) {
     // รับข้อมูลจาก frontend
     const requestData = await request.json();
     
-    console.log('Proxying request to accounting OCR API:', {
-      url: 'http://192.168.128.40:8111/ocr_format',
-      filesCount: requestData.length,
-      files: requestData.map((file: any) => ({
-        fileName: file.fileName,
-        fileType: file.fileType,
-        base64Size: file.base64Data ? file.base64Data.length : 0,
-        base64Preview: file.base64Data ? file.base64Data.substring(0, 50) + '...' : 'empty'
-      }))
-    });
+    // ตรวจสอบข้อมูลพื้นฐาน
+    if (!Array.isArray(requestData) || requestData.length === 0) {
+      return NextResponse.json(
+        { 
+          error: 'Invalid request data',
+          details: 'Request must be a non-empty array'
+        },
+        { status: 400 }
+      );
+    }
 
-    // ตรวจสอบข้อมูลก่อนส่ง
-    for (const file of requestData) {
+    // ตรวจสอบข้อมูลแต่ละไฟล์
+    for (let i = 0; i < requestData.length; i++) {
+      const file = requestData[i];
       if (!file.fileName || !file.fileType || !file.base64Data) {
         return NextResponse.json(
           { 
-            error: 'Invalid request data',
-            details: 'Missing required fields: fileName, fileType, or base64Data'
+            error: 'Invalid file data',
+            details: `File ${i} (${file.fileName || 'unnamed'}) missing required fields`
           },
           { status: 400 }
         );
@@ -41,93 +41,99 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ลองเช็ค connectivity ก่อน
-    console.log('Testing connectivity to OCR API...');
-    
+    // กำหนด timeout ตามประเภทไฟล์
+    const hasPdf = requestData.some((file: any) => file.fileType === 'application/pdf');
+    const timeoutMs = hasPdf ? 300000 : 60000; 
+
     // ส่งต่อไปยัง OCR API
-    const response = await fetch('http://192.168.128.40:8111/ocr_format', {
+    const response = await fetch('http://192.168.11.97:8111/ocr_format', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
       body: JSON.stringify(requestData),
-      signal: AbortSignal.timeout(30000), // 30 seconds timeout
+      signal: AbortSignal.timeout(timeoutMs),
     });
 
-    console.log('OCR API response status:', response.status, response.statusText);
-
-    // ตรวจสอบสถานะของ response
+    // จัดการ response ที่ไม่สำเร็จ
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('OCR API Error:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorText,
-        requestData: requestData.map((file: any) => ({
-          fileName: file.fileName,
-          fileType: file.fileType,
-          base64Length: file.base64Data?.length || 0
-        }))
-      });
+      let errorDetails;
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType?.includes('application/json')) {
+          errorDetails = await response.json();
+        } else {
+          errorDetails = await response.text();
+        }
+      } catch {
+        errorDetails = 'Cannot parse error response';
+      }
       
       return NextResponse.json(
         { 
           error: `OCR API Error: ${response.status} ${response.statusText}`,
-          details: errorText,
-          apiUrl: 'http://192.168.128.40:8111/ocr_format',
-          requestSummary: `${requestData.length} files sent`
+          details: typeof errorDetails === 'string' ? errorDetails : JSON.stringify(errorDetails)
         },
         { status: response.status }
       );
     }
 
-    // รับข้อมูลจาก OCR API
-    const ocrResult = await response.json();
-    console.log('OCR API Response received, files processed:', ocrResult.length);
+    // แปลง response เป็น JSON
+    let ocrResult;
+    try {
+      ocrResult = await response.json();
+    } catch {
+      return NextResponse.json(
+        { 
+          error: 'Invalid OCR API response',
+          details: 'OCR API returned non-JSON response'
+        },
+        { status: 502 }
+      );
+    }
 
-    // ส่งกลับไปยัง frontend
+    // ตรวจสอบ response structure
+    if (!Array.isArray(ocrResult)) {
+      return NextResponse.json(
+        { 
+          error: 'Invalid OCR API response format',
+          details: `Expected array but got ${typeof ocrResult}`
+        },
+        { status: 502 }
+      );
+    }
+
     return NextResponse.json(ocrResult);
 
   } catch (error) {
-    console.error('Proxy error:', error);
-    
-    // จัดการข้อผิดพลาดต่างๆ แบบละเอียด
-    if (error instanceof TypeError) {
-      if (error.message.includes('fetch')) {
-        return NextResponse.json(
-          { 
-            error: 'Cannot connect to OCR service',
-            details: 'The OCR service at 192.168.128.40:8111 is not reachable. Please check:\n1. Is the service running?\n2. Is the IP address correct?\n3. Is there a firewall blocking the connection?',
-            debugInfo: {
-              targetUrl: 'http://192.168.128.40:8111/ocr_format',
-              errorType: 'Connection Error',
-              errorMessage: error.message
-            }
-          },
-          { status: 503 }
-        );
-      }
-    }
-    
+    // จัดการ timeout
     if (error instanceof Error && error.name === 'AbortError') {
       return NextResponse.json(
         { 
           error: 'Request timeout',
-          details: 'The OCR service took too long to respond (> 30 seconds)'
+          details: 'The OCR service took too long to respond. PDF files may require more processing time.'
         },
         { status: 408 }
       );
     }
 
+    // จัดการ connection error
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      return NextResponse.json(
+        { 
+          error: 'Cannot connect to OCR service',
+          details: 'Connection failed. Please check if OCR service is running.'
+        },
+        { status: 503 }
+      );
+    }
+
+    // จัดการ error อื่นๆ
     return NextResponse.json(
       { 
         error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error',
-        debugInfo: {
-          errorType: error?.constructor?.name || 'Unknown',
-          stack: process.env.NODE_ENV === 'development' ? (error as Error)?.stack : undefined
-        }
+        details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );

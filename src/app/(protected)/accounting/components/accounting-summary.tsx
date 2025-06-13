@@ -20,7 +20,6 @@ export default function AccountingSummary() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // แปลงข้อมูลจาก Redux store เป็นรูปแบบ Accounting
     convertOcrDataToAccounting();
   }, [sourceFiles]);
 
@@ -55,7 +54,6 @@ export default function AccountingSummary() {
               
               accountingData.push(accountingRecord);
             } else {
-              // ถ้าไม่มี reportData ให้ parse จาก extractedText (fallback)
               const extractedText = page.extractedText || '';
               const accountingRecord = parseExtractedTextToAccounting(extractedText, file, pageIndex);
               
@@ -81,7 +79,7 @@ export default function AccountingSummary() {
     }
   };
 
-  // ฟังก์ชันสำหรับแยกข้อมูลจาก extractedText (fallback method)
+
   const parseExtractedTextToAccounting = (extractedText: string, file: any, pageIndex: number): Accounting | null => {
     try {
       // ใช้ regex หรือ string parsing เพื่อดึงข้อมูล
@@ -116,12 +114,10 @@ export default function AccountingSummary() {
   };
 
   const handleBack = () => {
-    // กลับไปหน้า accounting หลัก
     router.push('/accounting');
   };
 
   const handleSave = () => {
-    // TODO: Implement save functionality
     alert('Save functionality will be implemented - saving to database');
   };
 
@@ -163,12 +159,12 @@ export default function AccountingSummary() {
         </button>
       </div>
 
-      <div className="flex justify-between items-center px-4">       
-        <h1 className="text-xl font-bold">Accounting Summary Report</h1>
+      {/* <div className="flex justify-between items-center px-4">       
+        <h1 className="text-xl font-bold">Summary Report</h1>
         <div className="text-sm text-gray-600">
           {data.length} record(s) processed from {sourceFiles.length} file(s)
         </div>
-      </div>
+      </div> */}
 
       <div className="p-4 mx-auto">
         {loading ? (
