@@ -119,9 +119,6 @@ export default function AccountingSaveModal({
                       <div className="text-sm font-medium text-gray-900">
                         {item.fileName}
                       </div>
-                      <div className="text-xs text-gray-500">
-                        {item.ocrResult?.length || 0} page(s) processed
-                      </div>
                     </div>
                   </label>
                 ))}

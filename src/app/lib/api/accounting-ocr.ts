@@ -1,15 +1,79 @@
 'use server'
 
 import { request } from 'undici';
-import { SourceFileData, ParamOcrRequest } from "@/app/lib/interfaces"
+import { SourceFileData, ParamOcrRequest, ParamSaveOcrRequest } from "@/app/lib/interfaces"
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL;
 
-// 🆕 Accounting OCR Reader - เหมือน ocrReader แต่เป็น accounting
+const formatTime = (ms: number) => new Date(ms).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
+
+
+export async function getAccountingOcr(userId: string): Promise<SourceFileData[]> {
+  const response = await fetch(`${baseUrl}/get_accounting_ocr?user_id=${userId}`, {
+    method: 'GET',
+    headers: {
+      accept: 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('GET Accounting OCR API Error:', errorText);
+    throw new Error(`GET Accounting OCR API error: ${response.statusText}`);
+  }
+  return await response.json();
+}
+
+
+export async function saveAccountingOcr(data: any): Promise<string> {
+  const startTime = Date.now();
+  
+  console.log(`[Save Invoice] Start request at ${formatTime(startTime)}`);
+
+  try {
+    const { body, statusCode } = await request(`${baseUrl}/save_invoice`, {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(data),
+      headersTimeout: 300000, 
+      bodyTimeout: 300000,
+    });
+
+    const text = await body.text();
+
+    if (statusCode >= 400) {
+      console.error('Save Invoice API Error:', statusCode, text);
+      throw new Error(`Save Invoice API error (${statusCode}): ${text}`);
+    }
+
+    const endTime = Date.now();
+    console.log(`[Save Invoice] End request at ${formatTime(endTime)} (Duration ${endTime - startTime} ms)`);
+
+    return text;
+
+  } catch (error: any) {
+    const failTime = Date.now();
+    console.error(`[Save Invoice] Request failed at ${formatTime(failTime)} (Duration ${failTime - startTime} ms)`);
+
+    if (error?.cause?.code === 'UND_ERR_HEADERS_TIMEOUT') {
+      throw new Error('Save Invoice request failed due to headers timeout');
+    }
+
+    if (error.name === 'AbortError') {
+      throw new Error('Save Invoice request timed out');
+    }
+
+    throw error;
+  }
+}
+
+
 export async function accountingOcrReader(data: ParamOcrRequest[]): Promise<SourceFileData[]> {
   const startTime = Date.now();
-  const formatTime = (ms: number) => new Date(ms).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' });
-
+  
   console.log(`[Accounting OCR] Start request at ${formatTime(startTime)}`);
 
   try {
@@ -50,40 +114,4 @@ export async function accountingOcrReader(data: ParamOcrRequest[]): Promise<Sour
 
     throw error;
   }
-}
-
-// 🔄 Save Accounting OCR - ใช้เดิมหรือสร้างใหม่ก็ได้
-export async function saveAccountingOcr(data: any): Promise<SourceFileData> {
-  const response = await fetch(`${baseUrl}/save_accounting_ocr`, {
-    method: 'POST',
-    headers: {
-      accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('Save Accounting OCR API Error:', errorText);
-    throw new Error(`Save Accounting OCR API error: ${response.statusText}`);
-  }
-  return await response.json();
-}
-
-// 📋 Get Accounting OCR - ดึงข้อมูล accounting ที่บันทึกไว้
-export async function getAccountingOcr(userId: string): Promise<SourceFileData[]> {
-  const response = await fetch(`${baseUrl}/get_accounting_ocr?user_id=${userId}`, {
-    method: 'GET',
-    headers: {
-      accept: 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('GET Accounting OCR API Error:', errorText);
-    throw new Error(`GET Accounting OCR API error: ${response.statusText}`);
-  }
-  return await response.json();
 }
