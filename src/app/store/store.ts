@@ -1,17 +1,14 @@
-// redux/store.ts
 import { configureStore } from '@reduxjs/toolkit';
 import { fileReducer } from './file/fileReducer';
-// import { ADD_FILES } from './file/fileActions';
 
 export const store = configureStore({
   reducer: {
-    files: fileReducer,
+    files: fileReducer,          
+    accountingFiles: fileReducer, 
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
-      serializableCheck: {
-        // ignoredActions: [ADD_FILES],
-      },
+      serializableCheck: {},
     }),
 });
 
