@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useSelector } from 'react-redux';
@@ -16,11 +16,10 @@ import useToast from "@/app/hooks/useToast";
 import AccountingExportModal from "./accountingExportModal";
 import AccountingSaveModal from "./accountingSaveModal";
 
-// 🔧 Utility Functions (Pure functions for better performance)
+// 🔧 Utility Functions (ย้ายออกมาไว้นอก component เพื่อป้องกัน re-creation)
 const convertDateFormat = (dateString: string): string => {
   if (!dateString) return '';
   
-  // DD/MM/YYYY pattern (most common)
   const ddmmyyyyPattern = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
   const match = dateString.match(ddmmyyyyPattern);
   
@@ -34,12 +33,10 @@ const convertDateFormat = (dateString: string): string => {
     }
   }
   
-  // Already YYYY-MM-DD format
   if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(dateString)) {
     return dateString;
   }
   
-  // Fallback to Date parsing
   try {
     const date = new Date(dateString);
     if (!isNaN(date.getTime())) {
@@ -62,17 +59,20 @@ const cleanNumericValue = (value: string | number): string => {
   return isNaN(parsed) ? '0' : parsed.toString();
 };
 
+// ✅ ปรับปรุงฟังก์ชัน parseExtractedTextToAccounting ให้ดีขึ้น
 const parseExtractedTextToAccounting = (extractedText: string, file: SourceFileData, pageIndex: number, pageNumber: number): Accounting | null => {
   try {
+    // ลองแยกข้อมูลในรูปแบบต่างๆ
     const patterns = {
-      invoiceDate: /Invoice Date[:\s]*([^\n\r]+)/i,
-      invoiceNo: /Invoice No[:\s]*([^\n\r]+)/i,
-      sellerName: /Seller Name[:\s]*([^\n\r]+)/i,
-      sellerTaxId: /Seller Tax ID[:\s]*([^\n\r]+)/i,
-      branch: /Branch[:\s]*([^\n\r]+)/i,
-      productValue: /Product Value[:\s]*([0-9,.]+)/i,
-      vat: /VAT[:\s]*([0-9,.]+)/i,
-      totalAmount: /Total Amount[:\s]*([0-9,.]+)/i,
+      // สำหรับข้อมูลที่มี label ชัดเจน
+      invoiceDate: /(?:Invoice Date|วันที่|Date)[:\s]*([^\n\r]+)/i,
+      invoiceNo: /(?:Invoice No|เลขที่|No\.?|เลขที่เอกสาร)[:\s]*([^\n\r\s]+)/i,
+      sellerName: /(?:Seller Name|ชื่อผู้ขาย|Company|บริษัท)[:\s]*([^\n\r]+)/i,
+      sellerTaxId: /(?:Seller Tax ID|เลขประจำตัวผู้เสียภาษี|Tax ID)[:\s]*([0-9-]+)/i,
+      branch: /(?:Branch|สาขา)[:\s]*([^\n\r]+)/i,
+      productValue: /(?:Product Value|มูลค่าสินค้า|Subtotal)[:\s]*([0-9,.]+)/i,
+      vat: /(?:VAT|ภาษีมูลค่าเพิ่ม|Tax)[:\s]*([0-9,.]+)/i,
+      totalAmount: /(?:Total Amount|รวมทั้งสิ้น|Total)[:\s]*([0-9,.]+)/i,
     };
 
     const extracted = Object.entries(patterns).reduce((acc, [key, pattern]) => {
@@ -81,8 +81,13 @@ const parseExtractedTextToAccounting = (extractedText: string, file: SourceFileD
       return acc;
     }, {} as Record<string, string>);
 
+    // ถ้าไม่เจอข้อมูลสำคัญ ให้ลองวิธีอื่น
+    if (!extracted.sellerName && !extracted.invoiceNo) {
+      return null;
+    }
+
     return {
-      id: `${file.id}-page-${pageIndex}-${Date.now()}`,
+      id: `${file.id}-page-${pageIndex}-${Date.now()}-${Math.random()}`,
       invoiceDate: extracted.invoiceDate,
       invoiceNo: extracted.invoiceNo,
       sellerName: extracted.sellerName,
@@ -102,46 +107,76 @@ const parseExtractedTextToAccounting = (extractedText: string, file: SourceFileD
   }
 };
 
-// 🔍 ฟังก์ชันดึงข้อมูลพื้นฐานจาก extractedText แม้ว่าจะไม่เป็น format มาตรฐาน
+// ✅ ปรับปรุงฟังก์ชัน extractBasicInfoFromText
 const extractBasicInfoFromText = (extractedText: string, file: SourceFileData, pageIndex: number, pageNumber: number): Accounting => {
-  // ลองหาข้อมูลใดๆ ที่มีในข้อความ
   const text = extractedText || '';
-  
-  // หาชื่อบริษัท/ผู้ขาย (บรรทัดแรกๆ ที่ไม่ใช่ตัวเลข)
   const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+  
   let sellerName = '';
   let invoiceInfo = '';
+  let invoiceDate = '';
   
-  // หาบรรทัดที่มีชื่อบริษัท (มักจะเป็นบรรทัดแรกที่ยาวพอ)
-  for (const line of lines.slice(0, 10)) {
+  // หาชื่อบริษัท/ผู้ขาย
+  for (const line of lines.slice(0, 15)) {
     if (line.length > 10 && !line.match(/^\d+/) && !line.match(/^(page|หน้า)/i)) {
-      if (!sellerName && (line.includes('บริษัท') || line.includes('Company') || line.includes('Co.,') || line.includes('Ltd'))) {
-        sellerName = line;
+      if (!sellerName && (
+        line.includes('บริษัท') || 
+        line.includes('Company') || 
+        line.includes('Co.,') || 
+        line.includes('Ltd') ||
+        line.includes('จำกัด') ||
+        line.includes('Corporation')
+      )) {
+        sellerName = line.slice(0, 100); // จำกัดความยาว
         break;
       }
     }
   }
   
-  // หาข้อมูลเลขที่เอกสาร
-  const docNumberPattern = /(?:เลขที่|No\.?|Invoice|INV)[:\s]*([A-Z0-9-]+)/i;
-  const docMatch = text.match(docNumberPattern);
-  if (docMatch) {
-    invoiceInfo = docMatch[1];
+  // หาเลขที่เอกสาร
+  const docPatterns = [
+    /(?:เลขที่|No\.?|Invoice|INV|เลขที่เอกสาร)[:\s]*([A-Z0-9-]+)/i,
+    /([A-Z]{2,}\d{4,})/g, // รูปแบบทั่วไป เช่น INV2024001
+  ];
+  
+  for (const pattern of docPatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      invoiceInfo = match[1] || match[0];
+      break;
+    }
   }
   
   // หาวันที่
-  const datePattern = /(\d{1,2}\/\d{1,2}\/\d{4})/;
-  const dateMatch = text.match(datePattern);
-  let invoiceDate = '';
-  if (dateMatch) {
-    invoiceDate = dateMatch[1];
+  const datePatterns = [
+    /(\d{1,2}\/\d{1,2}\/\d{4})/,
+    /(\d{4}-\d{1,2}-\d{1,2})/,
+    /(\d{1,2}-\d{1,2}-\d{4})/,
+  ];
+  
+  for (const pattern of datePatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      invoiceDate = match[1];
+      break;
+    }
+  }
+  
+  // ถ้าไม่เจอชื่อบริษัท ให้ใช้ข้อความต้นๆ
+  if (!sellerName) {
+    const firstMeaningfulLine = lines.find(line => 
+      line.length > 5 && 
+      !line.match(/^\d+$/) && 
+      !line.match(/^(page|หน้า)/i)
+    );
+    sellerName = firstMeaningfulLine ? `${firstMeaningfulLine.slice(0, 50)}...` : 'Unknown';
   }
   
   return {
     id: `${file.id}-page-${pageIndex}-basic-${Date.now()}-${Math.random()}`,
     invoiceDate: invoiceDate,
-    invoiceNo: invoiceInfo || `Page ${pageNumber} content`,
-    sellerName: sellerName || `Text content found (${text.slice(0, 50)}...)`,
+    invoiceNo: invoiceInfo || `DOC-${pageNumber}`,
+    sellerName: sellerName,
     sellerTaxId: '',
     branch: '',
     productValue: 0,
@@ -171,30 +206,34 @@ const validatePayload = (payload: any): { isValid: boolean; errors: string[] } =
 
 // 📊 Summary Information Component
 const SummaryReport = ({ data, sourceFiles }: { data: Accounting[], sourceFiles: SourceFileData[] }) => {
-  const totalFiles = sourceFiles.length;
-  const totalPages = sourceFiles.reduce((sum, file) => sum + (file.ocrResult?.length || 0), 0);
-  const totalRecords = data.length;
-  const totalAmount = data.reduce((sum, record) => sum + (record.totalAmount || 0), 0);
+  const stats = useMemo(() => {
+    const totalFiles = sourceFiles.length;
+    const totalPages = sourceFiles.reduce((sum, file) => sum + (file.ocrResult?.length || 0), 0);
+    const totalRecords = data.length;
+    const totalAmount = data.reduce((sum, record) => sum + (record.totalAmount || 0), 0);
+    
+    return { totalFiles, totalPages, totalRecords, totalAmount };
+  }, [data, sourceFiles]);
   
   return (
     <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 shadow-sm">
       <h3 className="text-lg font-bold text-gray-800 mb-3">📊 Summary Report</h3>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
         <div className="text-center p-3 bg-white rounded-lg shadow-sm">
-          <div className="text-2xl font-bold text-blue-600">{totalFiles}</div>
+          <div className="text-2xl font-bold text-blue-600">{stats.totalFiles}</div>
           <div className="text-gray-600">Files</div>
         </div>
         <div className="text-center p-3 bg-white rounded-lg shadow-sm">
-          <div className="text-2xl font-bold text-green-600">{totalPages}</div>
+          <div className="text-2xl font-bold text-green-600">{stats.totalPages}</div>
           <div className="text-gray-600">Pages</div>
         </div>
         <div className="text-center p-3 bg-white rounded-lg shadow-sm">
-          <div className="text-2xl font-bold text-purple-600">{totalRecords}</div>
+          <div className="text-2xl font-bold text-purple-600">{stats.totalRecords}</div>
           <div className="text-gray-600">Invoice Records</div>
         </div>
         <div className="text-center p-3 bg-white rounded-lg shadow-sm">
           <div className="text-2xl font-bold text-orange-600">
-            {totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            {stats.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
           </div>
           <div className="text-gray-600">Total Amount</div>
         </div>
@@ -203,7 +242,7 @@ const SummaryReport = ({ data, sourceFiles }: { data: Accounting[], sourceFiles:
       {/* File breakdown */}
       <div className="mt-4 p-3 bg-white rounded-lg">
         <h4 className="font-semibold text-gray-700 mb-2">📁 File Breakdown:</h4>
-        <div className="space-y-1 text-sm">
+        <div className="space-y-1 text-sm max-h-32 overflow-y-auto">
           {sourceFiles.map((file, index) => (
             <div key={file.id} className="flex justify-between items-center py-1 border-b border-gray-100 last:border-b-0">
               <span className="text-gray-700 truncate flex-1 mr-2">
@@ -227,6 +266,10 @@ export default function AccountingSummary() {
   const sourceFiles = useSelector(selectAllAccountingFiles);
   const { toastSuccess, toastError } = useToast();
 
+  // ✅ ใช้ useRef เพื่อ track การประมวลผลครั้งล่าสุด
+  const lastProcessedRef = useRef<string>('');
+  const isProcessingRef = useRef(false);
+
   // State management
   const [data, setData] = useState<Accounting[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -241,13 +284,23 @@ export default function AccountingSummary() {
 
   const userId = session?.user?.userId ?? "admin";
 
-  // 🚀 Optimized data conversion - 1 หน้า = 1 Row
+  // ✅ สร้าง hash key สำหรับ sourceFiles เพื่อ detect การเปลี่ยนแปลง
+  const sourceFilesHash = useMemo(() => {
+    if (!sourceFiles.length) return '';
+    return sourceFiles.map(f => `${f.id}-${f.fileName}-${f.ocrResult?.length || 0}`).join('|');
+  }, [sourceFiles]);
+
+  // 🚀 Optimized data conversion - ทำงานเฉพาะเมื่อข้อมูลเปลี่ยนแปลงจริงๆ
   const convertedAccountingData = useMemo(() => {
+    // ✅ ป้องกันการประมวลผลซ้ำ
     if (!sourceFiles.length) return [];
+    if (isProcessingRef.current) return data; // ถ้ากำลังประมวลผลอยู่ ให้ return ข้อมูลเดิม
+    if (lastProcessedRef.current === sourceFilesHash) return data; // ถ้าข้อมูลไม่เปลี่ยน ให้ return ข้อมูลเดิม
 
     console.log('🔍 Converting OCR data to accounting records...');
     console.log('📁 Source files:', sourceFiles.length);
     
+    isProcessingRef.current = true; // ป้องกันการประมวลผลซ้ำ
     const accountingData: Accounting[] = [];
     
     sourceFiles.forEach((file, fileIndex) => {
@@ -255,18 +308,9 @@ export default function AccountingSummary() {
       console.log(`📑 Pages in file: ${file.ocrResult?.length || 0}`);
       
       file.ocrResult?.forEach((page, pageIndex) => {
-        console.log(`\n  📃 Page ${page.page}:`);
-        console.log(`    - Has extractedText: ${!!page.extractedText}`);
-        console.log(`    - Has reportData: ${!!(page as any).reportData}`);
-        
-        if (page.extractedText) {
-          console.log(`    - Text preview: "${page.extractedText.slice(0, 100)}..."`);
-        }
-        
         const reportData = (page as any).reportData;
         
         if (reportData) {
-          console.log(`    ✅ Using reportData`);
           // ✅ มี reportData จาก API - ใช้ข้อมูลนี้
           const accountingRecord: Accounting = {
             id: `${file.id}-page-${pageIndex}-${Date.now()}-${Math.random()}`,
@@ -287,7 +331,6 @@ export default function AccountingSummary() {
           accountingData.push(accountingRecord);
           
         } else if (page.extractedText) {
-          console.log(`    🔍 Trying to parse extractedText`);
           // ⚠️ ไม่มี reportData แต่มี extractedText - ลองแยกข้อมูล
           const parsedRecord = parseExtractedTextToAccounting(
             page.extractedText, 
@@ -297,17 +340,14 @@ export default function AccountingSummary() {
           );
           
           if (parsedRecord && (parsedRecord.invoiceNo || parsedRecord.sellerName)) {
-            console.log(`    ✅ Parsed successfully`);
             // ✅ แยกข้อมูลได้และมีข้อมูลสำคัญ
             accountingData.push(parsedRecord);
           } else {
-            console.log(`    🔍 Using basic text extraction`);
-            // 🔍 ลองดึงข้อมูลพื้นฐานจาก extractedText แม้ว่าจะไม่ได้ format มาตรฐาน
+            // 🔍 ลองดึงข้อมูลพื้นฐานจาก extractedText
             const basicRecord = extractBasicInfoFromText(page.extractedText, file, pageIndex, page.page);
             accountingData.push(basicRecord);
           }
         } else {
-          console.log(`    ❌ No data available`);
           // ❌ ไม่มีข้อมูลอะไรเลย - แสดง row ว่าง
           const emptyRecord: Accounting = {
             id: `${file.id}-page-${pageIndex}-no-data-${Date.now()}-${Math.random()}`,
@@ -331,15 +371,22 @@ export default function AccountingSummary() {
     });
     
     console.log(`\n📊 Total accounting records created: ${accountingData.length}`);
+    
+    // ✅ เก็บ hash และปลดล็อค
+    lastProcessedRef.current = sourceFilesHash;
+    isProcessingRef.current = false;
+    
     return accountingData;
-  }, [sourceFiles]);
+  }, [sourceFiles, sourceFilesHash, data]); // เพิ่ม data เป็น dependency
 
-  // 🔄 Update data when conversion changes
+  // 🔄 Update data เฉพาะเมื่อผลลัพธ์เปลี่ยนแปลงจริงๆ
   useEffect(() => {
-    setLoading(true);
-    setData(convertedAccountingData);
-    setLoading(false);
-  }, [convertedAccountingData]);
+    if (convertedAccountingData.length > 0 && convertedAccountingData !== data) {
+      setLoading(true);
+      setData(convertedAccountingData);
+      setLoading(false);
+    }
+  }, [convertedAccountingData, data]);
 
   // 📊 Memoized data with row numbers
   const dataWithRowNumbers = useMemo(() => 
@@ -359,7 +406,6 @@ export default function AccountingSummary() {
     }));
   }, []);
 
-  // ✅ Create proper setState function for AccountingForm
   const setFormModalState = useCallback((value: React.SetStateAction<boolean>) => {
     if (typeof value === 'function') {
       setModals(prev => ({
