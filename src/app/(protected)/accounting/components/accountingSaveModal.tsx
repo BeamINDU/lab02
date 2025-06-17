@@ -21,12 +21,16 @@ export default function AccountingSaveModal({
   const { toastError } = useToast();
   const [selectedFiles, setSelectedFiles] = useState<SourceFileData[]>([]);
 
-  //  คำนวณจำนวน records ที่จะถูก save
+//  คำนวณจำนวน records ที่จะถูก save (ทุกหน้า)
   const saveableRecords = useMemo(() => {
     let totalRecords = 0;
     const fileDetails: Array<{ fileName: string; pages: number; validPages: number }> = [];
 
     sourceFiles.forEach(file => {
+      // ✅ นับทุกหน้า ไม่ filter
+      const totalPages = file.ocrResult?.length || 0;
+      
+      // นับหน้าที่มีข้อมูลจริงๆ (สำหรับแสดงข้อมูล)
       const validPages = file.ocrResult?.filter(page => {
         const reportData = (page as any).reportData;
         return reportData && (
@@ -36,10 +40,10 @@ export default function AccountingSaveModal({
         );
       }).length || 0;
 
-      totalRecords += validPages;
+      totalRecords += totalPages; // ✅ นับทุกหน้า
       fileDetails.push({
         fileName: file.fileName,
-        pages: file.ocrResult?.length || 0,
+        pages: totalPages,
         validPages
       });
     });

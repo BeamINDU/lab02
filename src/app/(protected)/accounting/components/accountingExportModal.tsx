@@ -168,9 +168,9 @@ export default function AccountingExportModal({
                     <div className="text-sm font-medium text-gray-900">
                       {item.invoiceNo} - {item.sellerName}
                     </div>
-                    <div className="text-xs text-gray-500">
+                    {/* <div className="text-xs text-gray-500">
                       {item.invoiceDate} | Total: {item.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                    </div>
+                    </div> */}
                   </div>
                 </label>
               ))}

@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { selectAllAccountingFiles } from '@/app/store/file/fileSelectors';
+import { updateAccountingFiles } from '@/app/store/file/accountingFileActions';
 import { SourceFileData } from "@/app/lib/interfaces";
 import { saveAccountingOcr } from "@/app/lib/api/accounting-ocr";
 import AccountingColumns from "./accounting-column";
@@ -15,9 +16,79 @@ import useToast from "@/app/hooks/useToast";
 import AccountingExportModal from "./accountingExportModal";
 import AccountingSaveModal from "./accountingSaveModal";
 
+// ✅ เพิ่ม function สำหรับ sort ข้อมูลตาม filename และ page
+const sortAccountingData = (data: Accounting[]): Accounting[] => {
+  return [...data].sort((a, b) => {
+    // แยก filename และ page number
+    const extractFileAndPage = (filename: string) => {
+      const match = filename.match(/^(.+?)\s*\(Page\s*(\d+)\)$/i);
+      if (match) {
+        return {
+          fileName: match[1].trim(),
+          pageNumber: parseInt(match[2], 10)
+        };
+      }
+      return {
+        fileName: filename,
+        pageNumber: 1
+      };
+    };
+
+    const fileA = extractFileAndPage(a.filename);
+    const fileB = extractFileAndPage(b.filename);
+
+    // เรียงตาม filename ก่อน
+    const fileNameComparison = fileA.fileName.localeCompare(fileB.fileName);
+    if (fileNameComparison !== 0) {
+      return fileNameComparison;
+    }
+
+    // ถ้า filename เหมือนกัน เรียงตาม page number
+    return fileA.pageNumber - fileB.pageNumber;
+  });
+};
+
+// ✅ เพิ่ม function สำหรับ sync ข้อมูลกลับไป Redux
+const syncEditedDataToRedux = (
+  editedData: Accounting[], 
+  sourceFiles: SourceFileData[]
+): SourceFileData[] => {
+  return sourceFiles.map(file => ({
+    ...file,
+    ocrResult: file.ocrResult?.map(page => {
+      // หา edited data ที่ตรงกับ page นี้
+      const editedRecord = editedData.find(record => 
+        record.filename === `${file.fileName} (Page ${page.page})`
+      );
+
+      if (editedRecord) {
+        // ✅ Update reportData ด้วยข้อมูลที่ Edit แล้ว
+        return {
+          ...page,
+          reportData: {
+            invoiceDate: editedRecord.invoiceDate,
+            invoiceNo: editedRecord.invoiceNo,
+            sellerName: editedRecord.sellerName,
+            sellerTaxId: editedRecord.sellerTaxId,
+            branch: editedRecord.branch,
+            productValue: editedRecord.productValue.toString(),
+            vat: editedRecord.vat.toString(),
+            totalAmount: editedRecord.totalAmount.toString(),
+          }
+        };
+      }
+
+      return page;
+    }) || []
+  }));
+};
+
 //  Utility Functions
 const convertDateFormat = (dateString: string): string => {
-  if (!dateString) return '';
+  if (!dateString || dateString.trim() === '') {
+    // ✅ ถ้าไม่มีวันที่ ให้ใช้วันที่ปัจจุบัน
+    return new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  }
   
   const ddmmyyyyPattern = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
   const match = dateString.match(ddmmyyyyPattern);
@@ -45,7 +116,8 @@ const convertDateFormat = (dateString: string): string => {
     // Ignore parsing errors
   }
   
-  return '';
+  // ✅ ถ้าแปลงไม่ได้ ให้ใช้วันที่ปัจจุบัน
+  return new Date().toISOString().split('T')[0];
 };
 
 const cleanNumericValue = (value: string | number): string => {
@@ -57,7 +129,6 @@ const cleanNumericValue = (value: string | number): string => {
   
   return isNaN(parsed) ? '0' : parsed.toString();
 };
-
 
 const parseExtractedTextToAccounting = (extractedText: string, file: SourceFileData, pageNumber: number): Accounting | null => {
   try {
@@ -99,7 +170,6 @@ const parseExtractedTextToAccounting = (extractedText: string, file: SourceFileD
     return null;
   }
 };
-
 
 const extractBasicInfoFromText = (extractedText: string, file: SourceFileData, pageNumber: number): Accounting => {
   const text = extractedText || '';
@@ -192,7 +262,6 @@ const validatePayload = (payload: any): { isValid: boolean; errors: string[] } =
   if (!payload.pages?.length) errors.push('Missing pages data');
   if (!payload.pageNumber) errors.push('Missing pageNumber');
   
- 
   const reportData = payload.reportData;
   if (!reportData) {
     errors.push('Missing reportData');
@@ -201,7 +270,6 @@ const validatePayload = (payload: any): { isValid: boolean; errors: string[] } =
       errors.push('Missing both invoiceNo and sellerName');
     }
     
-
     if (!reportData.invoiceDate) {
       console.warn('Missing invoiceDate - will use empty string');
     }
@@ -214,12 +282,11 @@ const validatePayload = (payload: any): { isValid: boolean; errors: string[] } =
   return { isValid: errors.length === 0, errors };
 };
 
-
-
 //  Main Component
 export default function AccountingSummary() {
   const router = useRouter();
   const { data: session } = useSession();
+  const dispatch = useDispatch();
   const sourceFiles = useSelector(selectAllAccountingFiles);
   const { toastSuccess, toastError } = useToast();
 
@@ -237,7 +304,6 @@ export default function AccountingSummary() {
 
   const userId = session?.user?.userId ?? "admin";
 
-
   const convertedAccountingData = useMemo(() => {
     if (!sourceFiles.length) return [];
     
@@ -250,7 +316,6 @@ export default function AccountingSummary() {
       console.log(`\n Processing file ${fileIndex + 1}: ${file.fileName}`);
       console.log(`Pages in file: ${file.ocrResult?.length || 0}`);
       
-
       file.ocrResult?.forEach((page, pageIndex) => {
         const reportData = (page as any).reportData;
         
@@ -276,25 +341,23 @@ export default function AccountingSummary() {
           console.log(`Page ${page.page}: Found reportData - ${reportData.sellerName}`);
           
         } else if (page.extractedText) {
-
           const parsedRecord = parseExtractedTextToAccounting(page.extractedText, file, page.page);
           
-          if (parsedRecord && (parsedRecord.invoiceNo || parsedRecord.sellerName)) {
-
+          // ✅ เอาทุก record ไม่ filter
+          if (parsedRecord) {
             accountingData.push(parsedRecord);
-            console.log(` Page ${page.page}: Parsed data - ${parsedRecord.sellerName}`);
+            console.log(`Page ${page.page}: Parsed data - ${parsedRecord.sellerName}`);
           } else {
-
             const basicRecord = extractBasicInfoFromText(page.extractedText, file, page.page);
             accountingData.push(basicRecord);
-            console.log(` Page ${page.page}: Basic data only - ${basicRecord.sellerName}`);
+            console.log(`Page ${page.page}: Basic data only - ${basicRecord.sellerName}`);
           }
         } else {
-
+          // ✅ ไม่มีข้อมูลเลย - ก็ยังสร้าง record
           const emptyRecord: Accounting = {
             id: `${file.id}-page-${page.page}-no-data-${Date.now()}-${Math.random()}`,
-            invoiceDate: '',
-            invoiceNo: '',
+            invoiceDate: new Date().toISOString().split('T')[0], // ✅ ใช้วันที่ปัจจุบัน
+            invoiceNo: `${file.fileName}-P${page.page}`, // auto-generate
             sellerName: `No data extracted`,
             sellerTaxId: '',
             branch: '',
@@ -309,7 +372,7 @@ export default function AccountingSummary() {
           };
           
           accountingData.push(emptyRecord);
-          console.log(` Page ${page.page}: No data found`);
+          console.log(`Page ${page.page}: No data found - created empty record`);
         }
       });
     });
@@ -317,9 +380,9 @@ export default function AccountingSummary() {
     console.log(`\n Total accounting records created: ${accountingData.length}`);
     console.log(` Expected records (total pages): ${sourceFiles.reduce((sum, file) => sum + (file.ocrResult?.length || 0), 0)}`);
     
-    return accountingData;
+    // ✅ เรียงข้อมูลตาม filename และ page number
+    return sortAccountingData(accountingData);
   }, [sourceFiles]);
-
 
   useEffect(() => {
     if (convertedAccountingData.length > 0) {
@@ -331,12 +394,11 @@ export default function AccountingSummary() {
     }
   }, [convertedAccountingData, sourceFiles.length]);
 
-
+  // ✅ เรียงข้อมูลก่อนใส่เลข row
   const dataWithRowNumbers = useMemo(() => 
     data.map((item, index) => ({ ...item, no: index + 1 })),
     [data]
   );
-
 
   const handleBack = useCallback(() => {
     router.push('/accounting');
@@ -364,7 +426,6 @@ export default function AccountingSummary() {
   }, []);
 
   const handleSave = useCallback(() => {
-
     handleModalToggle('save', true);
   }, [sourceFiles.length, toastError, handleModalToggle]);
 
@@ -376,115 +437,124 @@ export default function AccountingSummary() {
     handleModalToggle('export', true);
   }, [data.length, toastError, handleModalToggle]);
 
+  const handleSaveFiles = useCallback(async (selectedFiles: SourceFileData[]) => {
+    try {
+      setSaveProgress({ current: 0, total: selectedFiles.length });
+      
+      // ✅ Sync ข้อมูลที่ edit แล้วกลับไป Redux ก่อน save
+      console.log('🔄 Syncing edited data back to Redux...');
+      const syncedFiles = syncEditedDataToRedux(data, selectedFiles);
+      dispatch(updateAccountingFiles(syncedFiles));
+      
+      let successCount = 0;
+      const errors: string[] = [];
 
-const handleSaveFiles = useCallback(async (selectedFiles: SourceFileData[]) => {
-  try {
-    setSaveProgress({ current: 0, total: selectedFiles.length });
-    
-    let successCount = 0;
-    const errors: string[] = [];
+      // 🔄 Loop ผ่านแต่ละไฟล์ที่ sync แล้ว
+      for (let i = 0; i < syncedFiles.length; i++) {
+        const file = syncedFiles[i];
+        setSaveProgress({ current: i + 1, total: syncedFiles.length });
 
-    // 🔄 Loop ผ่านแต่ละไฟล์
-    for (let i = 0; i < selectedFiles.length; i++) {
-      const file = selectedFiles[i];
-      setSaveProgress({ current: i + 1, total: selectedFiles.length });
-
-      try {
-        console.log(`[Save] Processing file: ${file.fileName}`);
-        
-        // ✅ หาทุกหน้าที่มี reportData
-        const pagesWithData = file.ocrResult?.filter(page => {
-          const reportData = (page as any).reportData;
-          return reportData && (
-            reportData.invoiceNo || 
-            reportData.sellerName || 
-            reportData.totalAmount > 0
-          );
-        }) || [];
-
-        if (pagesWithData.length === 0) {
-          errors.push(`No valid invoice data found in any page of: ${file.fileName}`);
-          continue;
-        }
-
-        console.log(`[Save] Found ${pagesWithData.length} pages with valid data in ${file.fileName}`);
-
-        // ✅ Save แต่ละหน้าแยกกัน
-        for (const page of pagesWithData) {
-          const reportData = (page as any).reportData;
+        try {
+          console.log(`[Save] Processing file: ${file.fileName}`);
           
-          try {
-            const apiPayload = {
-              userId,
-              fileName: `${file.fileName} (Page ${page.page})`, // ✅ ระบุหน้า
-              fileType: file.fileType || "",
-              pageNumber: page.page, // ✅ เพิ่ม page number
-              pages: [{  // ✅ Send แค่หน้าเดียว
-                page: page.page,
-                base64Data: page.base64Data || ""
-              }],
-              reportData: {
-                invoiceDate: convertDateFormat(reportData.invoiceDate || ""),
-                invoiceNo: String(reportData.invoiceNo || `${file.fileName}-P${page.page}`),
-                sellerName: String(reportData.sellerName || ""),
-                sellerTaxId: String(reportData.sellerTaxId || ""),
-                branch: String(reportData.branch || ""),
-                productValue: cleanNumericValue(reportData.productValue || "0"),
-                vat: cleanNumericValue(reportData.vat || "0"),
-                totalAmount: cleanNumericValue(reportData.totalAmount || "0")
-              }
-            };
+          // ✅ Save ทุกหน้า (รวมที่ไม่มีข้อมูล)
+          const pagesWithData = file.ocrResult || [];
 
-            // ✅ Validate แต่ละหน้า
-            const validation = validatePayload(apiPayload);
-            if (!validation.isValid) {
-              errors.push(`Invalid data for ${file.fileName} Page ${page.page}: ${validation.errors.join(', ')}`);
-              continue;
-            }
-
-            // ✅ Save แต่ละหน้า
-            await saveAccountingOcr(apiPayload);
-            successCount++;
-            
-            console.log(`✅ Saved: ${file.fileName} Page ${page.page} - ${reportData.sellerName}`);
-            
-            // หน่วงเวลาเล็กน้อยระหว่าง save แต่ละหน้า
-            await new Promise(resolve => setTimeout(resolve, 100));
-            
-          } catch (pageError) {
-            console.error(`Failed to save page ${page.page} of ${file.fileName}:`, pageError);
-            errors.push(`Failed to save: ${file.fileName} Page ${page.page}`);
+          if (pagesWithData.length === 0) {
+            errors.push(`No pages found in file: ${file.fileName}`);
+            continue;
           }
-        }
-        
-      } catch (fileError) {
-        console.error(`Failed to process file: ${file.fileName}`, fileError);
-        errors.push(`Failed to process: ${file.fileName}`);
-      }
-    }
 
-    // ✅ แสดงผลลัพธ์
-    if (successCount > 0) {
-      toastSuccess(`Successfully saved ${successCount} invoice records!`);
-    }
-    
-    if (errors.length > 0) {
-      console.warn('Save errors:', errors);
+          console.log(`[Save] Found ${pagesWithData.length} pages in ${file.fileName}`);
+
+          // ✅ Save แต่ละหน้าแยกกัน (รวมหน้าที่ไม่มีข้อมูล)
+          for (const page of pagesWithData) {
+            const reportData = (page as any).reportData;
+            
+            try {
+              // ✅ สร้าง reportData default ถ้าไม่มี
+              const defaultReportData = {
+                invoiceDate: new Date().toISOString().split('T')[0], // ✅ ใช้วันที่ปัจจุบัน
+                invoiceNo: `${file.fileName}-P${page.page}`,
+                sellerName: "No data extracted",
+                sellerTaxId: "",
+                branch: "",
+                productValue: "0",
+                vat: "0",
+                totalAmount: "0"
+              };
+
+              // ใช้ reportData ที่มี หรือ default
+              const finalReportData = reportData || defaultReportData;
+
+              const apiPayload = {
+                userId,
+                fileName: `${file.fileName} (Page ${page.page})`,
+                fileType: file.fileType || "",
+                pageNumber: page.page,
+                pages: [{
+                  page: page.page,
+                  base64Data: page.base64Data || ""
+                }],
+                reportData: {
+                  invoiceDate: convertDateFormat(finalReportData.invoiceDate || ""), // ✅ จะได้วันที่ปัจจุบันถ้าเป็น ""
+                  invoiceNo: String(finalReportData.invoiceNo || `${file.fileName}-P${page.page}`),
+                  sellerName: String(finalReportData.sellerName || "No data extracted"),
+                  sellerTaxId: String(finalReportData.sellerTaxId || ""),
+                  branch: String(finalReportData.branch || ""),
+                  productValue: cleanNumericValue(finalReportData.productValue || "0"),
+                  vat: cleanNumericValue(finalReportData.vat || "0"),
+                  totalAmount: cleanNumericValue(finalReportData.totalAmount || "0")
+                }
+              };
+
+              // ✅ ปรับ validation ให้อ่อนลง (ไม่บังคับต้องมีข้อมูล)
+              const validation = validatePayload(apiPayload);
+              if (!validation.isValid) {
+                console.warn(`Warning for ${file.fileName} Page ${page.page}: ${validation.errors.join(', ')}`);
+                // ไม่ skip แต่แสดง warning
+              }
+
+              await saveAccountingOcr(apiPayload);
+              successCount++;
+              
+              console.log(`✅ Saved: ${file.fileName} Page ${page.page} - ${finalReportData.sellerName}`);
+              
+              await new Promise(resolve => setTimeout(resolve, 100));
+              
+            } catch (pageError) {
+              console.error(`Failed to save page ${page.page} of ${file.fileName}:`, pageError);
+              errors.push(`Failed to save: ${file.fileName} Page ${page.page}`);
+            }
+          }
+          
+        } catch (fileError) {
+          console.error(`Failed to process file: ${file.fileName}`, fileError);
+          errors.push(`Failed to process: ${file.fileName}`);
+        }
+      }
+
+      // ✅ แสดงผลลัพธ์
+      if (successCount > 0) {
+        toastSuccess(`Successfully saved ${successCount} invoice records!`);
+      }
       
-      // แสดง error แบบละเอียด
-      const errorSummary = errors.slice(0, 3).join('\n');
-      const hasMore = errors.length > 3;
+      if (errors.length > 0) {
+        console.warn('Save errors:', errors);
+        
+        const errorSummary = errors.slice(0, 3).join('\n');
+        const hasMore = errors.length > 3;
+        
+        toastError(`Some records failed to save:\n${errorSummary}${hasMore ? `\n... and ${errors.length - 3} more` : ''}`);
+      }
       
-      toastError(`Some records failed to save:\n${errorSummary}${hasMore ? `\n... and ${errors.length - 3} more` : ''}`);
+    } catch (error) {
+      console.error('Save process failed:', error);
+      toastError("Save process failed. Please try again.");
+    } finally {
+      setSaveProgress({ current: 0, total: 0 });
     }
-    
-  } catch (error) {
-    console.error('Save process failed:', error);
-    toastError("Save process failed. Please try again.");
-  } finally {
-    setSaveProgress({ current: 0, total: 0 });
-  }
-}, [userId, toastSuccess, toastError]);
+  }, [userId, toastSuccess, toastError, data, dispatch]);
 
   const handleDetail = useCallback(async (row?: Accounting) => {
     try {
@@ -496,14 +566,17 @@ const handleSaveFiles = useCallback(async (selectedFiles: SourceFileData[]) => {
     }
   }, [handleModalToggle, toastError]);
 
-
   const handleFormSave = useCallback(async (updatedData: Accounting) => {
     try {
       setLoading(true);
       
-      setData(prev => prev.map(item => 
-        item.id === updatedData.id ? { ...item, ...updatedData } : item
-      ));
+      // ✅ Update ข้อมูลใน local state แล้วเรียงใหม่
+      setData(prev => {
+        const updated = prev.map(item => 
+          item.id === updatedData.id ? { ...item, ...updatedData } : item
+        );
+        return sortAccountingData(updated); // เรียงใหม่หลัง update
+      });
       
       toastSuccess('Data updated successfully! (Note: Please use "Save" button to save to database)');
       
@@ -514,7 +587,6 @@ const handleSaveFiles = useCallback(async (selectedFiles: SourceFileData[]) => {
       setLoading(false);
     }
   }, [toastSuccess, toastError]);
-
 
   const renderContent = () => {
     if (loading) {
@@ -550,7 +622,8 @@ const handleSaveFiles = useCallback(async (selectedFiles: SourceFileData[]) => {
         })}
         data={dataWithRowNumbers}
         selectedIds={selectedIds}
-        defaultSorting={[{ id: "invoiceDate", desc: true }]}
+        // ✅ เปลี่ยน default sorting เป็น filename แทน invoiceDate
+        defaultSorting={[{ id: "filename", desc: false }]}
       />
     );
   };
@@ -569,10 +642,10 @@ const handleSaveFiles = useCallback(async (selectedFiles: SourceFileData[]) => {
         <div className="flex gap-2">
           <button
             onClick={handleSave}
-            
+            disabled={data.length === 0}
             className="bg-[#0369A1] hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-6 py-2 rounded text-sm font-medium transition-colors"
           >
-            Save 
+            Save {data.length > 0 && `(${data.length})`}
           </button>
           <button
             onClick={handleExport}
@@ -601,7 +674,14 @@ const handleSaveFiles = useCallback(async (selectedFiles: SourceFileData[]) => {
 
       {/* Main content */}
       <div className="p-4 mx-auto">
-        <h3 className="text-lg font-bold text-gray-800 mb-3">Summary Report</h3>
+        <h3 className="text-lg font-bold text-gray-800 mb-3">
+          Summary Report 
+          {data.length > 0 && (
+            <span className="text-sm font-normal text-gray-600 ml-2">
+              (Sorted by File & Page)
+            </span>
+          )}
+        </h3>
         
         {/* Data Table */}
         {renderContent()}

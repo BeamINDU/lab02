@@ -1,4 +1,3 @@
-// src/app/(protected)/accounting/components/accountingPage.tsx
 "use client";
 
 import React, { useState, useRef, ChangeEvent } from "react";
@@ -7,21 +6,19 @@ import { useRouter } from "next/navigation";
 import { useSelector, useDispatch } from 'react-redux';
 import { readFileAsBase64, convertBase64ToBlobUrl } from '@/app/lib/utils/file';
 import { convertFileSizeToMB } from "@/app/lib/utils/format";
-import { selectAllSourceFiles } from '@/app/store/file/fileSelectors';
-import { addFiles, clearFiles } from '@/app/store/file/fileActions';
-import SourceFileTable from "@/app/components/ocr/SourceFileTable";
+import { selectAllAccountingFiles } from '@/app/store/file/fileSelectors';
+import { addAccountingFiles, clearAccountingFiles } from '@/app/store/file/accountingFileActions';
+import AccountingSourceFileTable from "@/app/components/Accounting/AccountingSourceFileTable";
 import PreviewFile from "@/app/components/ocr/PreviewFile";
 import Processing from "@/app/components/processing/Processing";
 import { SourceFileData, ParamOcrRequest } from "@/app/lib/interfaces"
 import { accountingOcrReader } from '@/app/lib/api/accounting-ocr';
-import { addAccountingFiles, clearAccountingFiles } from '@/app/store/file/accountingFileActions';
-import { selectAllAccountingFiles } from '@/app/store/file/fileSelectors';
 
 export default function AccountingPage() {
   const { toastSuccess, toastError, toastInfo, toastWarning } = useToast();
   const router = useRouter();
   const dispatch = useDispatch();
-  const sourceFiles = useSelector(selectAllSourceFiles);
+  const sourceFiles = useSelector(selectAllAccountingFiles);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [filePreview, setFilePreview] = useState<SourceFileData | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -57,136 +54,133 @@ export default function AccountingPage() {
     setFilePreview(file);
   };
 
+  // Handlers for FileChange
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
 
-// Handlers for FileChange
-const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
-  const files = Array.from(e.target.files ?? []);
-
-  if (files.length === 0) {
-    toastError("No files selected.");
-    return;
-  }
-
-  // เตือนเมื่อเลือกหลายไฟล์
-  if (files.length > 1) {
-    toastWarning(`Selected ${files.length} files - System will process one by one to save GPU memory`);
-  }
-
-  const allowedExtensions = ["pdf", "png", "jpg", "jpeg"];
-  const maxSizeMB = 10;
-  const allResults: SourceFileData[] = [];
-
-  for (const file of files) {
-    const fileExtension = file.name.split(".").pop()?.toLowerCase() || "";
-    const fileSizeInMB = convertFileSizeToMB(file.size);
-
-    if (!allowedExtensions.includes(fileExtension)) {
-      toastError(`Invalid file type for ${file.name}. Only PDF, PNG, JPG, and JPEG are allowed.`);
-      continue;
+    if (files.length === 0) {
+      toastError("No files selected.");
+      return;
     }
 
-    if (parseFloat(fileSizeInMB) > maxSizeMB) {
-      toastError(`File ${file.name} is too large. Max size is ${maxSizeMB} MB.`);
-      continue;
+
+    if (files.length > 1) {
+      toastWarning(`Selected ${files.length} files - System will process one by one to save GPU memory`);
+    }
+
+    const allowedExtensions = ["pdf", "png", "jpg", "jpeg"];
+    const maxSizeMB = 10;
+    const allResults: SourceFileData[] = [];
+
+    for (const file of files) {
+      const fileExtension = file.name.split(".").pop()?.toLowerCase() || "";
+      const fileSizeInMB = convertFileSizeToMB(file.size);
+
+      if (!allowedExtensions.includes(fileExtension)) {
+        toastError(`Invalid file type for ${file.name}. Only PDF, PNG, JPG, and JPEG are allowed.`);
+        continue;
+      }
+
+      if (parseFloat(fileSizeInMB) > maxSizeMB) {
+        toastError(`File ${file.name} is too large. Max size is ${maxSizeMB} MB.`);
+        continue;
+      }
+
+      try {
+        const base64Data = await readFileAsBase64(file);
+        
+        console.log(`File: ${file.name}, Size: ${file.size} bytes`);
+
+        const rawResult: SourceFileData = {
+          id: Date.now() + Math.random(),
+          fileName: file.name,
+          fileType: file.type,
+          base64Data: base64Data,
+          blobUrl: fileExtension === "pdf" ? URL.createObjectURL(file) : convertBase64ToBlobUrl(base64Data),
+        };
+
+        allResults.push(rawResult);
+      } catch (error) {
+        console.error(`Error processing file ${file.name}:`, error);
+        toastError(`Failed to process ${file.name}. ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+
+    if (allResults.length > 0) {
+
+      dispatch(addAccountingFiles(allResults));
+      toastSuccess(`Added ${allResults.length} file(s) successfully`);
+      
+ 
+      if (allResults.length > 1) {
+        toastInfo(`${allResults.length} files in queue - Will process one by one to prevent GPU memory overflow`);
+      }
+    }
+
+    e.target.value = "";
+  };
+
+
+  const handleStartProcess = async () => {
+    if (!sourceFiles || sourceFiles.length === 0) {
+      toastError("No source file.");
+      return;
     }
 
     try {
-      const base64Data = await readFileAsBase64(file);
+      setProcessing(true);
       
-      console.log(`File: ${file.name}, Size: ${file.size} bytes`);
-
-      const rawResult: SourceFileData = {
-        id: Date.now() + Math.random(),
-        fileName: file.name,
-        fileType: file.type,
-        base64Data: base64Data,
-        blobUrl: fileExtension === "pdf" ? URL.createObjectURL(file) : convertBase64ToBlobUrl(base64Data),
-      };
-
-      allResults.push(rawResult);
-    } catch (error) {
-      console.error(`Error processing file ${file.name}:`, error);
-      toastError(`Failed to process ${file.name}. ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-
-  if (allResults.length > 0) {
-    dispatch(addFiles(allResults));
-    toastSuccess(`Added ${allResults.length} file(s) successfully`);
-    
-    // เตือนเกี่ยวกับการประมวลผลหลายไฟล์
-    if (allResults.length > 1) {
-      toastInfo(`${allResults.length} files in queue - Will process one by one to prevent GPU memory overflow`);
-    }
-  }
-
-  e.target.value = "";
-};
-
-// Handlers for StartProcess
-const handleStartProcess = async () => {
-  if (!sourceFiles || sourceFiles.length === 0) {
-    toastError("No source file.");
-    return;
-  }
-
-  try {
-    setProcessing(true);
-    
-    // เรียก API สำหรับ Accounting OCR
-    await processAccountingOcr();
-    
-    toastSuccess("Accounting OCR processing completed.");
-    
-    // นำทางไปหน้า accounting summary
-    router.push('/accounting/summary');
-    
-  } catch (error) {
-    console.error("Error during Accounting OCR processing", error);
-    toastError("Failed to process Accounting OCR. Please try again.");
-  } finally {
-    setProcessing(false);
-  }
-};
-
-
-const processAccountingOcr = async () => {
-  try {
-    // เตรียมข้อมูลสำหรับส่ง API เหมือน OCR ทุกประการ
-    const param: ParamOcrRequest[] = sourceFiles?.map(file => ({
-      fileName: file.fileName,
-      fileType: file.fileType,
-      base64Data: file.base64Data,
-    })) ?? [];
   
-    console.log("Accounting OCR Request:", param); 
+      await processAccountingOcr();
+      
+      toastSuccess("Accounting OCR processing completed.");
+      
+
+      router.push('/accounting/summary');
+      
+    } catch (error) {
+      console.error("Error during Accounting OCR processing", error);
+      toastError("Failed to process Accounting OCR. Please try again.");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const processAccountingOcr = async () => {
+    try {
+
+      const param: ParamOcrRequest[] = sourceFiles?.map(file => ({
+        fileName: file.fileName,
+        fileType: file.fileType,
+        base64Data: file.base64Data,
+      })) ?? [];
     
-    // 🔥 เรียก Accounting OCR API เหมือน ocrReader
-    const response: SourceFileData[] = await accountingOcrReader(param);
-    console.log("Accounting OCR Result:", response); 
+      console.log("Accounting OCR Request:", param); 
+      
 
-    // แปลงข้อมูลเหมือน OCR ทุกประการ
-    const ocrResult = response?.map((file) => ({
-      ...file,
-      blobUrl: file.base64Data ? convertBase64ToBlobUrl(file.base64Data) : '',
-      ocrResult: file.ocrResult?.map((page) => ({
-        ...page,
-        blobUrl: page.base64Data ? convertBase64ToBlobUrl(page.base64Data) : '',
-      })) ?? [],
-    }));
-
-    dispatch(clearAccountingFiles()); // ใช้ accounting action
-    dispatch(addAccountingFiles(ocrResult)); // ใช้ accounting action
-
-    return ocrResult;
-    
-  } catch (error) {
-    console.error("[Accounting OCR] Failed during processAccountingOcr:", error);
-    throw error;
-  }
-};
+      const response: SourceFileData[] = await accountingOcrReader(param);
+      console.log("Accounting OCR Result:", response); 
 
 
+      const ocrResult = response?.map((file) => ({
+        ...file,
+        blobUrl: file.base64Data ? convertBase64ToBlobUrl(file.base64Data) : '',
+        ocrResult: file.ocrResult?.map((page) => ({
+          ...page,
+          blobUrl: page.base64Data ? convertBase64ToBlobUrl(page.base64Data) : '',
+        })) ?? [],
+      }));
+
+      dispatch(clearAccountingFiles()); 
+      dispatch(addAccountingFiles(ocrResult)); 
+
+      return ocrResult;
+      
+    } catch (error) {
+      console.error("[Accounting OCR] Failed during processAccountingOcr:", error);
+      throw error;
+    }
+  };
   
   return (
     <div className="flex flex-col p-2 h-full">
@@ -218,6 +212,7 @@ const processAccountingOcr = async () => {
             <button
               onClick={handleStartProcess}
               className="text-white bg-[#0369A1] hover:bg-blue-600 font-semibold px-4 py-2 rounded-md text-sm w-full md:w-auto md:ml-auto disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={processing}
             >
               {processing ? `Processing...` : `Start Process`}
             </button>
@@ -232,7 +227,7 @@ const processAccountingOcr = async () => {
           <div className="border rounded-xl shadow-md p-4 flex flex-col h-full">
             <h2 className="text-lg font-bold text-black mb-2">Source File</h2>
             <div className="flex-1 max-h-[76vh] overflow-auto">
-              <SourceFileTable 
+              <AccountingSourceFileTable 
                 sourceFiles={sourceFiles} 
                 onPreview={handlePreviewFile} 
                 onEdit={handleEdit}
