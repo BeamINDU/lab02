@@ -14,5 +14,6 @@ export type Accounting = {
   createdBy?: string;
   updatedDate?: Date | null;
   updatedBy?: string | null;
+  isTemporary?: boolean; 
 }
 

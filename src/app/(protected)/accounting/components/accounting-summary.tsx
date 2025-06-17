@@ -11,12 +11,11 @@ import AccountingColumns from "./accounting-column";
 import DataTable from "@/app/components/table/DataTable";
 import AccountingForm from "./accounting-form";
 import { Accounting } from "@/app/type/accounting";
-import { update } from "@/app/lib/services/accounting";
 import useToast from "@/app/hooks/useToast";
 import AccountingExportModal from "./accountingExportModal";
 import AccountingSaveModal from "./accountingSaveModal";
 
-// 🔧 Utility Functions
+//  Utility Functions
 const convertDateFormat = (dateString: string): string => {
   if (!dateString) return '';
   
@@ -59,7 +58,7 @@ const cleanNumericValue = (value: string | number): string => {
   return isNaN(parsed) ? '0' : parsed.toString();
 };
 
-// ✅ ฟังก์ชันแยกข้อมูลจาก extractedText
+
 const parseExtractedTextToAccounting = (extractedText: string, file: SourceFileData, pageNumber: number): Accounting | null => {
   try {
     const patterns = {
@@ -93,6 +92,7 @@ const parseExtractedTextToAccounting = (extractedText: string, file: SourceFileD
       imageUrl: '',
       createdDate: new Date(),
       createdBy: 'system',
+      isTemporary: true, 
     };
   } catch (error) {
     console.error('Error parsing extracted text:', error);
@@ -100,7 +100,7 @@ const parseExtractedTextToAccounting = (extractedText: string, file: SourceFileD
   }
 };
 
-// ✅ ฟังก์ชันดึงข้อมูลพื้นฐานจาก extractedText
+
 const extractBasicInfoFromText = (extractedText: string, file: SourceFileData, pageNumber: number): Accounting => {
   const text = extractedText || '';
   const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
@@ -179,6 +179,7 @@ const extractBasicInfoFromText = (extractedText: string, file: SourceFileData, p
     imageUrl: '',
     createdDate: new Date(),
     createdBy: 'system',
+    isTemporary: true, 
   };
 };
 
@@ -189,9 +190,25 @@ const validatePayload = (payload: any): { isValid: boolean; errors: string[] } =
   if (!payload.fileName) errors.push('Missing fileName');
   if (!payload.fileType) errors.push('Missing fileType');
   if (!payload.pages?.length) errors.push('Missing pages data');
-  if (!payload.reportData?.invoiceDate) errors.push('Missing invoiceDate');
-  if (!payload.reportData?.invoiceNo && !payload.reportData?.sellerName) {
-    errors.push('Missing both invoiceNo and sellerName');
+  if (!payload.pageNumber) errors.push('Missing pageNumber');
+  
+ 
+  const reportData = payload.reportData;
+  if (!reportData) {
+    errors.push('Missing reportData');
+  } else {
+    if (!reportData.invoiceNo && !reportData.sellerName) {
+      errors.push('Missing both invoiceNo and sellerName');
+    }
+    
+
+    if (!reportData.invoiceDate) {
+      console.warn('Missing invoiceDate - will use empty string');
+    }
+    
+    if (!reportData.totalAmount || parseFloat(reportData.totalAmount) <= 0) {
+      console.warn('Invalid or missing totalAmount');
+    }
   }
   
   return { isValid: errors.length === 0, errors };
@@ -233,7 +250,7 @@ export default function AccountingSummary() {
       console.log(`\n Processing file ${fileIndex + 1}: ${file.fileName}`);
       console.log(`Pages in file: ${file.ocrResult?.length || 0}`);
       
-      // แปลงทุกหน้าของไฟล์นี้เป็น accounting records
+
       file.ocrResult?.forEach((page, pageIndex) => {
         const reportData = (page as any).reportData;
         
@@ -252,6 +269,7 @@ export default function AccountingSummary() {
             imageUrl: page.blobUrl || '',
             createdDate: new Date(),
             createdBy: 'system',
+            isTemporary: true, 
           };
           
           accountingData.push(accountingRecord);
@@ -264,12 +282,12 @@ export default function AccountingSummary() {
           if (parsedRecord && (parsedRecord.invoiceNo || parsedRecord.sellerName)) {
 
             accountingData.push(parsedRecord);
-            console.log(`✅ Page ${page.page}: Parsed data - ${parsedRecord.sellerName}`);
+            console.log(` Page ${page.page}: Parsed data - ${parsedRecord.sellerName}`);
           } else {
 
             const basicRecord = extractBasicInfoFromText(page.extractedText, file, page.page);
             accountingData.push(basicRecord);
-            console.log(`⚠️ Page ${page.page}: Basic data only - ${basicRecord.sellerName}`);
+            console.log(` Page ${page.page}: Basic data only - ${basicRecord.sellerName}`);
           }
         } else {
 
@@ -287,10 +305,11 @@ export default function AccountingSummary() {
             imageUrl: page.blobUrl || '',
             createdDate: new Date(),
             createdBy: 'system',
+            isTemporary: true, 
           };
           
           accountingData.push(emptyRecord);
-          console.log(`❌ Page ${page.page}: No data found`);
+          console.log(` Page ${page.page}: No data found`);
         }
       });
     });
@@ -345,10 +364,7 @@ export default function AccountingSummary() {
   }, []);
 
   const handleSave = useCallback(() => {
-    if (sourceFiles.length === 0) {
-      toastError("No data to save.");
-      return;
-    }
+
     handleModalToggle('save', true);
   }, [sourceFiles.length, toastError, handleModalToggle]);
 
@@ -361,77 +377,114 @@ export default function AccountingSummary() {
   }, [data.length, toastError, handleModalToggle]);
 
 
-  const handleSaveFiles = useCallback(async (selectedFiles: SourceFileData[]) => {
-    try {
-      setSaveProgress({ current: 0, total: selectedFiles.length });
-      
-      let successCount = 0;
-      const errors: string[] = [];
+const handleSaveFiles = useCallback(async (selectedFiles: SourceFileData[]) => {
+  try {
+    setSaveProgress({ current: 0, total: selectedFiles.length });
+    
+    let successCount = 0;
+    const errors: string[] = [];
 
-      for (let i = 0; i < selectedFiles.length; i++) {
-        const file = selectedFiles[i];
-        setSaveProgress({ current: i + 1, total: selectedFiles.length });
+    // 🔄 Loop ผ่านแต่ละไฟล์
+    for (let i = 0; i < selectedFiles.length; i++) {
+      const file = selectedFiles[i];
+      setSaveProgress({ current: i + 1, total: selectedFiles.length });
 
-        try {
-          const reportData = file.ocrResult?.find(page => (page as any).reportData)?.reportData;
-          
-          if (!reportData) {
-            errors.push(`No invoice data found for: ${file.fileName}`);
-            continue;
-          }
+      try {
+        console.log(`[Save] Processing file: ${file.fileName}`);
+        
+        // ✅ หาทุกหน้าที่มี reportData
+        const pagesWithData = file.ocrResult?.filter(page => {
+          const reportData = (page as any).reportData;
+          return reportData && (
+            reportData.invoiceNo || 
+            reportData.sellerName || 
+            reportData.totalAmount > 0
+          );
+        }) || [];
 
-          const apiPayload = {
-            userId,
-            fileName: file.fileName || "",
-            fileType: file.fileType || "",
-            pages: file.ocrResult?.map(page => ({
-              page: page.page,
-              base64Data: page.base64Data || ""
-            })) ?? [],
-            reportData: {
-              invoiceDate: convertDateFormat(reportData.invoiceDate || ""),
-              invoiceNo: String(reportData.invoiceNo || ""),
-              sellerName: String(reportData.sellerName || ""),
-              sellerTaxId: String(reportData.sellerTaxId || ""),
-              branch: String(reportData.branch || ""),
-              productValue: cleanNumericValue(reportData.productValue || "0"),
-              vat: cleanNumericValue(reportData.vat || "0"),
-              totalAmount: cleanNumericValue(reportData.totalAmount || "0")
-            }
-          };
-
-          const validation = validatePayload(apiPayload);
-          if (!validation.isValid) {
-            errors.push(`Invalid data for ${file.fileName}: ${validation.errors.join(', ')}`);
-            continue;
-          }
-
-          await saveAccountingOcr(apiPayload);
-          successCount++;
-          
-        } catch (fileError) {
-          console.error(`Failed to save file: ${file.fileName}`, fileError);
-          errors.push(`Failed to save: ${file.fileName}`);
+        if (pagesWithData.length === 0) {
+          errors.push(`No valid invoice data found in any page of: ${file.fileName}`);
+          continue;
         }
-      }
 
-      // Show results
-      if (successCount > 0) {
-        toastSuccess(`Successfully saved ${successCount} out of ${selectedFiles.length} file(s)!`);
+        console.log(`[Save] Found ${pagesWithData.length} pages with valid data in ${file.fileName}`);
+
+        // ✅ Save แต่ละหน้าแยกกัน
+        for (const page of pagesWithData) {
+          const reportData = (page as any).reportData;
+          
+          try {
+            const apiPayload = {
+              userId,
+              fileName: `${file.fileName} (Page ${page.page})`, // ✅ ระบุหน้า
+              fileType: file.fileType || "",
+              pageNumber: page.page, // ✅ เพิ่ม page number
+              pages: [{  // ✅ Send แค่หน้าเดียว
+                page: page.page,
+                base64Data: page.base64Data || ""
+              }],
+              reportData: {
+                invoiceDate: convertDateFormat(reportData.invoiceDate || ""),
+                invoiceNo: String(reportData.invoiceNo || `${file.fileName}-P${page.page}`),
+                sellerName: String(reportData.sellerName || ""),
+                sellerTaxId: String(reportData.sellerTaxId || ""),
+                branch: String(reportData.branch || ""),
+                productValue: cleanNumericValue(reportData.productValue || "0"),
+                vat: cleanNumericValue(reportData.vat || "0"),
+                totalAmount: cleanNumericValue(reportData.totalAmount || "0")
+              }
+            };
+
+            // ✅ Validate แต่ละหน้า
+            const validation = validatePayload(apiPayload);
+            if (!validation.isValid) {
+              errors.push(`Invalid data for ${file.fileName} Page ${page.page}: ${validation.errors.join(', ')}`);
+              continue;
+            }
+
+            // ✅ Save แต่ละหน้า
+            await saveAccountingOcr(apiPayload);
+            successCount++;
+            
+            console.log(`✅ Saved: ${file.fileName} Page ${page.page} - ${reportData.sellerName}`);
+            
+            // หน่วงเวลาเล็กน้อยระหว่าง save แต่ละหน้า
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+          } catch (pageError) {
+            console.error(`Failed to save page ${page.page} of ${file.fileName}:`, pageError);
+            errors.push(`Failed to save: ${file.fileName} Page ${page.page}`);
+          }
+        }
+        
+      } catch (fileError) {
+        console.error(`Failed to process file: ${file.fileName}`, fileError);
+        errors.push(`Failed to process: ${file.fileName}`);
       }
-      
-      if (errors.length > 0) {
-        console.warn('Save errors:', errors);
-        toastError(`Some files failed to save. Check console for details.`);
-      }
-      
-    } catch (error) {
-      console.error('Save process failed:', error);
-      toastError("Save process failed. Please try again.");
-    } finally {
-      setSaveProgress({ current: 0, total: 0 });
     }
-  }, [userId, toastSuccess, toastError]);
+
+    // ✅ แสดงผลลัพธ์
+    if (successCount > 0) {
+      toastSuccess(`Successfully saved ${successCount} invoice records!`);
+    }
+    
+    if (errors.length > 0) {
+      console.warn('Save errors:', errors);
+      
+      // แสดง error แบบละเอียด
+      const errorSummary = errors.slice(0, 3).join('\n');
+      const hasMore = errors.length > 3;
+      
+      toastError(`Some records failed to save:\n${errorSummary}${hasMore ? `\n... and ${errors.length - 3} more` : ''}`);
+    }
+    
+  } catch (error) {
+    console.error('Save process failed:', error);
+    toastError("Save process failed. Please try again.");
+  } finally {
+    setSaveProgress({ current: 0, total: 0 });
+  }
+}, [userId, toastSuccess, toastError]);
 
   const handleDetail = useCallback(async (row?: Accounting) => {
     try {
@@ -443,25 +496,16 @@ export default function AccountingSummary() {
     }
   }, [handleModalToggle, toastError]);
 
+
   const handleFormSave = useCallback(async (updatedData: Accounting) => {
     try {
       setLoading(true);
       
-      const result = await update(updatedData.id, {
-        id: updatedData.id,
-        invoiceDate: updatedData.invoiceDate,
-        invoiceNo: updatedData.invoiceNo,
-        sellerName: updatedData.sellerName,
-        sellerTaxId: updatedData.sellerTaxId,
-        branch: updatedData.branch,
-        productValue: updatedData.productValue,
-        vat: updatedData.vat,
-        totalAmount: updatedData.totalAmount,
-        updatedBy: 'current_user'
-      });
+      setData(prev => prev.map(item => 
+        item.id === updatedData.id ? { ...item, ...updatedData } : item
+      ));
       
-      setData(prev => prev.map(item => item.id === result.id ? result : item));
-      toastSuccess('Data updated successfully!');
+      toastSuccess('Data updated successfully! (Note: Please use "Save" button to save to database)');
       
     } catch (error) {
       console.error('Save failed:', error);
@@ -525,10 +569,10 @@ export default function AccountingSummary() {
         <div className="flex gap-2">
           <button
             onClick={handleSave}
-            disabled={sourceFiles.length === 0}
+            
             className="bg-[#0369A1] hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-6 py-2 rounded text-sm font-medium transition-colors"
           >
-            Save {sourceFiles.length > 0 && `(${sourceFiles.length})`}
+            Save 
           </button>
           <button
             onClick={handleExport}
