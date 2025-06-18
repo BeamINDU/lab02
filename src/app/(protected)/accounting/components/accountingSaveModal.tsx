@@ -1,6 +1,3 @@
-// src/app/(protected)/accounting/components/accountingSaveModal.tsx
-// ✅ ปรับปรุง Save Modal ให้แสดงข้อมูลที่ถูกต้อง
-
 import React, { useState, useMemo } from "react";
 import useToast from '@/app/hooks/useToast';
 import { SourceFileData } from "@/app/lib/interfaces"
@@ -21,16 +18,13 @@ export default function AccountingSaveModal({
   const { toastError } = useToast();
   const [selectedFiles, setSelectedFiles] = useState<SourceFileData[]>([]);
 
-//  คำนวณจำนวน records ที่จะถูก save (ทุกหน้า)
   const saveableRecords = useMemo(() => {
     let totalRecords = 0;
     const fileDetails: Array<{ fileName: string; pages: number; validPages: number }> = [];
 
     sourceFiles.forEach(file => {
-      // ✅ นับทุกหน้า ไม่ filter
       const totalPages = file.ocrResult?.length || 0;
       
-      // นับหน้าที่มีข้อมูลจริงๆ (สำหรับแสดงข้อมูล)
       const validPages = file.ocrResult?.filter(page => {
         const reportData = (page as any).reportData;
         return reportData && (
@@ -40,7 +34,7 @@ export default function AccountingSaveModal({
         );
       }).length || 0;
 
-      totalRecords += totalPages; // ✅ นับทุกหน้า
+      totalRecords += totalPages; 
       fileDetails.push({
         fileName: file.fileName,
         pages: totalPages,
@@ -51,21 +45,12 @@ export default function AccountingSaveModal({
     return { totalRecords, fileDetails };
   }, [sourceFiles]);
 
-  //  คำนวณ records ที่เลือกแล้ว
   const selectedRecords = useMemo(() => {
     let totalSelected = 0;
     
     selectedFiles.forEach(file => {
-      const validPages = file.ocrResult?.filter(page => {
-        const reportData = (page as any).reportData;
-        return reportData && (
-          reportData.invoiceNo || 
-          reportData.sellerName || 
-          reportData.totalAmount > 0
-        );
-      }).length || 0;
-      
-      totalSelected += validPages;
+      const totalPages = file.ocrResult?.length || 0;
+      totalSelected += totalPages;
     });
 
     return totalSelected;
@@ -91,7 +76,7 @@ export default function AccountingSaveModal({
     }
     
     if (selectedRecords === 0) {
-      toastError("No valid invoice records found in selected files.");
+      toastError("No pages found in selected files.");
       return;
     }
     
@@ -140,6 +125,9 @@ export default function AccountingSaveModal({
               <span className="ml-2 text-gray-700 font-medium">
                 Select All Files ({sourceFiles.length})
               </span>
+              <span className="ml-2 text-gray-500 text-sm">
+                ({saveableRecords.totalRecords} total pages)
+              </span>
             </label>
 
             <div className="border-t pt-2">
@@ -166,17 +154,26 @@ export default function AccountingSaveModal({
                       <div className="text-sm font-medium text-gray-900">
                         {item.fileName}
                       </div>
-                      {fileDetail && fileDetail.validPages !== fileDetail.pages && (
-                        <div className="text-xs text-amber-600">
-                          {fileDetail.pages - fileDetail.validPages} pages have no valid invoice data
-                        </div>
-                      )}
+                      <div className="text-xs text-gray-500 mt-1">
+                        {fileDetail ? `${fileDetail.pages} pages total` : 'Loading...'}
+                        {fileDetail && fileDetail.validPages < fileDetail.pages && (
+                          <span className="text-blue-600 ml-2">
+                            • Will save all pages ({fileDetail.pages - fileDetail.validPages} have no data but will use defaults)
+                          </span>
+                        )}
+                        {fileDetail && fileDetail.validPages === fileDetail.pages && fileDetail.pages > 0 && (
+                          <span className="text-green-600 ml-2">
+                            • All pages have data
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </label>
                 );
               })}
             </div>
           </div>
+
 
           {/* Action Buttons - Fixed at bottom */}
           <div className="border-t pt-4 flex-shrink-0">
@@ -192,7 +189,7 @@ export default function AccountingSaveModal({
                 disabled={selectedRecords === 0}
                 className="text-white bg-[#0369A1] hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold px-4 py-2 rounded-md text-sm w-full sm:w-auto"
               >
-                Save ({selectedRecords})
+                Save ({selectedRecords} pages)
               </button>
             </div>
           </div>

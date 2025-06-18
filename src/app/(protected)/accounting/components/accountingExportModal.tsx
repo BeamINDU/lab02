@@ -65,7 +65,7 @@ export default function AccountingExportModal({
         item.filename
       ]);
 
-      // สร้างข้อมูลในรูปแบบ Markdown table
+
       const exportData = [
         // Header row
         `| ${headers.join(' | ')} |`,
@@ -75,11 +75,11 @@ export default function AccountingExportModal({
         ...tableData.map(row => `| ${row.join(' | ')} |`)
       ].join('\n');
 
-      // สร้างชื่อไฟล์ตามวันที่
+
       const currentDate = new Date().toISOString().split('T')[0];
       const filename = `accounting_summary_${currentDate}`;
 
-      // Export Excel ทันที
+
       ExportExcel(exportData, filename);
 
       toastSuccess(`Exported ${selectedItems.length} item(s) to Excel successfully!`);

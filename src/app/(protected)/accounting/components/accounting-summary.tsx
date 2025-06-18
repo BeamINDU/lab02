@@ -16,10 +16,9 @@ import useToast from "@/app/hooks/useToast";
 import AccountingExportModal from "./accountingExportModal";
 import AccountingSaveModal from "./accountingSaveModal";
 
-// ✅ เพิ่ม function สำหรับ sort ข้อมูลตาม filename และ page
+
 const sortAccountingData = (data: Accounting[]): Accounting[] => {
   return [...data].sort((a, b) => {
-    // แยก filename และ page number
     const extractFileAndPage = (filename: string) => {
       const match = filename.match(/^(.+?)\s*\(Page\s*(\d+)\)$/i);
       if (match) {
@@ -43,12 +42,11 @@ const sortAccountingData = (data: Accounting[]): Accounting[] => {
       return fileNameComparison;
     }
 
-    // ถ้า filename เหมือนกัน เรียงตาม page number
     return fileA.pageNumber - fileB.pageNumber;
   });
 };
 
-// ✅ เพิ่ม function สำหรับ sync ข้อมูลกลับไป Redux
+
 const syncEditedDataToRedux = (
   editedData: Accounting[], 
   sourceFiles: SourceFileData[]
@@ -56,13 +54,11 @@ const syncEditedDataToRedux = (
   return sourceFiles.map(file => ({
     ...file,
     ocrResult: file.ocrResult?.map(page => {
-      // หา edited data ที่ตรงกับ page นี้
       const editedRecord = editedData.find(record => 
         record.filename === `${file.fileName} (Page ${page.page})`
       );
 
       if (editedRecord) {
-        // ✅ Update reportData ด้วยข้อมูลที่ Edit แล้ว
         return {
           ...page,
           reportData: {
@@ -86,8 +82,8 @@ const syncEditedDataToRedux = (
 //  Utility Functions
 const convertDateFormat = (dateString: string): string => {
   if (!dateString || dateString.trim() === '') {
-    // ✅ ถ้าไม่มีวันที่ ให้ใช้วันที่ปัจจุบัน
-    return new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+    return new Date().toISOString().split('T')[0]; 
   }
   
   const ddmmyyyyPattern = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
@@ -116,7 +112,7 @@ const convertDateFormat = (dateString: string): string => {
     // Ignore parsing errors
   }
   
-  // ✅ ถ้าแปลงไม่ได้ ให้ใช้วันที่ปัจจุบัน
+
   return new Date().toISOString().split('T')[0];
 };
 
@@ -225,7 +221,7 @@ const extractBasicInfoFromText = (extractedText: string, file: SourceFileData, p
     }
   }
   
-  // ถ้าไม่เจอชื่อบริษัท ให้ใช้ข้อความต้นๆ
+
   if (!sellerName) {
     const firstMeaningfulLine = lines.find(line => 
       line.length > 5 && 
@@ -343,7 +339,6 @@ export default function AccountingSummary() {
         } else if (page.extractedText) {
           const parsedRecord = parseExtractedTextToAccounting(page.extractedText, file, page.page);
           
-          // ✅ เอาทุก record ไม่ filter
           if (parsedRecord) {
             accountingData.push(parsedRecord);
             console.log(`Page ${page.page}: Parsed data - ${parsedRecord.sellerName}`);
@@ -353,11 +348,11 @@ export default function AccountingSummary() {
             console.log(`Page ${page.page}: Basic data only - ${basicRecord.sellerName}`);
           }
         } else {
-          // ✅ ไม่มีข้อมูลเลย - ก็ยังสร้าง record
+
           const emptyRecord: Accounting = {
             id: `${file.id}-page-${page.page}-no-data-${Date.now()}-${Math.random()}`,
-            invoiceDate: new Date().toISOString().split('T')[0], // ✅ ใช้วันที่ปัจจุบัน
-            invoiceNo: `${file.fileName}-P${page.page}`, // auto-generate
+            invoiceDate: new Date().toISOString().split('T')[0], 
+            invoiceNo: `${file.fileName}-P${page.page}`, 
             sellerName: `No data extracted`,
             sellerTaxId: '',
             branch: '',
@@ -380,7 +375,7 @@ export default function AccountingSummary() {
     console.log(`\n Total accounting records created: ${accountingData.length}`);
     console.log(` Expected records (total pages): ${sourceFiles.reduce((sum, file) => sum + (file.ocrResult?.length || 0), 0)}`);
     
-    // ✅ เรียงข้อมูลตาม filename และ page number
+
     return sortAccountingData(accountingData);
   }, [sourceFiles]);
 
@@ -394,7 +389,7 @@ export default function AccountingSummary() {
     }
   }, [convertedAccountingData, sourceFiles.length]);
 
-  // ✅ เรียงข้อมูลก่อนใส่เลข row
+
   const dataWithRowNumbers = useMemo(() => 
     data.map((item, index) => ({ ...item, no: index + 1 })),
     [data]
@@ -441,7 +436,7 @@ export default function AccountingSummary() {
     try {
       setSaveProgress({ current: 0, total: selectedFiles.length });
       
-      // ✅ Sync ข้อมูลที่ edit แล้วกลับไป Redux ก่อน save
+
       console.log('🔄 Syncing edited data back to Redux...');
       const syncedFiles = syncEditedDataToRedux(data, selectedFiles);
       dispatch(updateAccountingFiles(syncedFiles));
@@ -449,7 +444,7 @@ export default function AccountingSummary() {
       let successCount = 0;
       const errors: string[] = [];
 
-      // 🔄 Loop ผ่านแต่ละไฟล์ที่ sync แล้ว
+
       for (let i = 0; i < syncedFiles.length; i++) {
         const file = syncedFiles[i];
         setSaveProgress({ current: i + 1, total: syncedFiles.length });
@@ -457,7 +452,7 @@ export default function AccountingSummary() {
         try {
           console.log(`[Save] Processing file: ${file.fileName}`);
           
-          // ✅ Save ทุกหน้า (รวมที่ไม่มีข้อมูล)
+
           const pagesWithData = file.ocrResult || [];
 
           if (pagesWithData.length === 0) {
@@ -467,14 +462,14 @@ export default function AccountingSummary() {
 
           console.log(`[Save] Found ${pagesWithData.length} pages in ${file.fileName}`);
 
-          // ✅ Save แต่ละหน้าแยกกัน (รวมหน้าที่ไม่มีข้อมูล)
+
           for (const page of pagesWithData) {
             const reportData = (page as any).reportData;
             
             try {
-              // ✅ สร้าง reportData default ถ้าไม่มี
+
               const defaultReportData = {
-                invoiceDate: new Date().toISOString().split('T')[0], // ✅ ใช้วันที่ปัจจุบัน
+                invoiceDate: new Date().toISOString().split('T')[0],
                 invoiceNo: `${file.fileName}-P${page.page}`,
                 sellerName: "No data extracted",
                 sellerTaxId: "",
@@ -484,7 +479,6 @@ export default function AccountingSummary() {
                 totalAmount: "0"
               };
 
-              // ใช้ reportData ที่มี หรือ default
               const finalReportData = reportData || defaultReportData;
 
               const apiPayload = {
@@ -497,7 +491,7 @@ export default function AccountingSummary() {
                   base64Data: page.base64Data || ""
                 }],
                 reportData: {
-                  invoiceDate: convertDateFormat(finalReportData.invoiceDate || ""), // ✅ จะได้วันที่ปัจจุบันถ้าเป็น ""
+                  invoiceDate: convertDateFormat(finalReportData.invoiceDate || ""), 
                   invoiceNo: String(finalReportData.invoiceNo || `${file.fileName}-P${page.page}`),
                   sellerName: String(finalReportData.sellerName || "No data extracted"),
                   sellerTaxId: String(finalReportData.sellerTaxId || ""),
@@ -508,17 +502,17 @@ export default function AccountingSummary() {
                 }
               };
 
-              // ✅ ปรับ validation ให้อ่อนลง (ไม่บังคับต้องมีข้อมูล)
+
               const validation = validatePayload(apiPayload);
               if (!validation.isValid) {
                 console.warn(`Warning for ${file.fileName} Page ${page.page}: ${validation.errors.join(', ')}`);
-                // ไม่ skip แต่แสดง warning
+ 
               }
 
               await saveAccountingOcr(apiPayload);
               successCount++;
               
-              console.log(`✅ Saved: ${file.fileName} Page ${page.page} - ${finalReportData.sellerName}`);
+              console.log(`Saved: ${file.fileName} Page ${page.page} - ${finalReportData.sellerName}`);
               
               await new Promise(resolve => setTimeout(resolve, 100));
               
@@ -534,7 +528,7 @@ export default function AccountingSummary() {
         }
       }
 
-      // ✅ แสดงผลลัพธ์
+
       if (successCount > 0) {
         toastSuccess(`Successfully saved ${successCount} invoice records!`);
       }
@@ -570,12 +564,12 @@ export default function AccountingSummary() {
     try {
       setLoading(true);
       
-      // ✅ Update ข้อมูลใน local state แล้วเรียงใหม่
+
       setData(prev => {
         const updated = prev.map(item => 
           item.id === updatedData.id ? { ...item, ...updatedData } : item
         );
-        return sortAccountingData(updated); // เรียงใหม่หลัง update
+        return sortAccountingData(updated); 
       });
       
       toastSuccess('Data updated successfully! (Note: Please use "Save" button to save to database)');
@@ -622,7 +616,6 @@ export default function AccountingSummary() {
         })}
         data={dataWithRowNumbers}
         selectedIds={selectedIds}
-        // ✅ เปลี่ยน default sorting เป็น filename แทน invoiceDate
         defaultSorting={[{ id: "filename", desc: false }]}
       />
     );
