@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useSelector, useDispatch } from 'react-redux';
@@ -16,6 +16,51 @@ import useToast from "@/app/hooks/useToast";
 import AccountingExportModal from "./accountingExportModal";
 import AccountingSaveModal from "./accountingSaveModal";
 
+// Types
+interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+}
+
+interface SaveProgress {
+  current: number;
+  total: number;
+}
+
+interface ModalState {
+  form: boolean;
+  export: boolean;
+  save: boolean;
+}
+
+// Constants
+const EMPTY_ACCOUNTING_RECORD = {
+  invoiceDate: "",
+  invoiceNo: "",
+  sellerName: "",
+  sellerTaxId: "",
+  branch: "",
+  productValue: "0",
+  vat: "0",
+  totalAmount: "0"
+} as const;
+
+// Utility Functions
+// ✅ ไม่ต้องแปลงวันที่ ส่งค่าเดิมเข้า database เลย
+const convertDateFormat = (dateString: string): string => {
+  // ส่งค่าตามที่ได้รับมา ไม่แปลง
+  return dateString || "";
+};
+
+const cleanNumericValue = (value: string | number): string => {
+  if (typeof value === 'number') return value.toString();
+  if (!value) return '0';
+  
+  const cleaned = String(value).replace(/[^0-9.-]/g, '');
+  const parsed = parseFloat(cleaned);
+  
+  return isNaN(parsed) ? '0' : parsed.toString();
+};
 
 const sortAccountingData = (data: Accounting[]): Accounting[] => {
   return [...data].sort((a, b) => {
@@ -36,8 +81,11 @@ const sortAccountingData = (data: Accounting[]): Accounting[] => {
     const fileA = extractFileAndPage(a.filename);
     const fileB = extractFileAndPage(b.filename);
 
-    // เรียงตาม filename ก่อน
-    const fileNameComparison = fileA.fileName.localeCompare(fileB.fileName);
+    const fileNameComparison = fileA.fileName.localeCompare(fileB.fileName, undefined, {
+      numeric: true,
+      caseFirst: 'upper'
+    });
+    
     if (fileNameComparison !== 0) {
       return fileNameComparison;
     }
@@ -45,7 +93,6 @@ const sortAccountingData = (data: Accounting[]): Accounting[] => {
     return fileA.pageNumber - fileB.pageNumber;
   });
 };
-
 
 const syncEditedDataToRedux = (
   editedData: Accounting[], 
@@ -79,58 +126,15 @@ const syncEditedDataToRedux = (
   }));
 };
 
-//  Utility Functions
-const convertDateFormat = (dateString: string): string => {
-  if (!dateString || dateString.trim() === '') {
-
-    return new Date().toISOString().split('T')[0]; 
-  }
-  
-  const ddmmyyyyPattern = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
-  const match = dateString.match(ddmmyyyyPattern);
-  
-  if (match) {
-    const [, day, month, year] = match;
-    const dayNum = parseInt(day, 10);
-    const monthNum = parseInt(month, 10);
-    
-    if (dayNum >= 1 && dayNum <= 31 && monthNum >= 1 && monthNum <= 12) {
-      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-    }
-  }
-  
-  if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(dateString)) {
-    return dateString;
-  }
-  
-  try {
-    const date = new Date(dateString);
-    if (!isNaN(date.getTime())) {
-      return date.toISOString().split('T')[0];
-    }
-  } catch {
-    // Ignore parsing errors
-  }
-  
-
-  return new Date().toISOString().split('T')[0];
-};
-
-const cleanNumericValue = (value: string | number): string => {
-  if (typeof value === 'number') return value.toString();
-  if (!value) return '0';
-  
-  const cleaned = String(value).replace(/[^0-9.-]/g, '');
-  const parsed = parseFloat(cleaned);
-  
-  return isNaN(parsed) ? '0' : parsed.toString();
-};
-
-const parseExtractedTextToAccounting = (extractedText: string, file: SourceFileData, pageNumber: number): Accounting | null => {
+const parseExtractedTextToAccounting = (
+  extractedText: string, 
+  file: SourceFileData, 
+  pageNumber: number
+): Accounting | null => {
   try {
     const patterns = {
       invoiceDate: /(?:Invoice Date|วันที่|Date)[:\s]*([^\n\r]+)/i,
-      invoiceNo: /(?:Invoice No|เลขที่|No\.?|เลขที่เอกสาร)[:\s]*([^\n\r\s]+)/i,
+      invoiceNo: /(?:Invoice No|เลขที่|No\.?|เลขที่เอกสาร|Invoice|INV)[:\s]*([A-Z0-9\-\/]+)/i,
       sellerName: /(?:Seller Name|ชื่อผู้ขาย|Company|บริษัท)[:\s]*([^\n\r]+)/i,
       sellerTaxId: /(?:Seller Tax ID|เลขประจำตัวผู้เสียภาษี|Tax ID)[:\s]*([0-9-]+)/i,
       branch: /(?:Branch|สาขา)[:\s]*([^\n\r]+)/i,
@@ -152,14 +156,14 @@ const parseExtractedTextToAccounting = (extractedText: string, file: SourceFileD
       sellerName: extracted.sellerName,
       sellerTaxId: extracted.sellerTaxId,
       branch: extracted.branch,
-      productValue: parseFloat(cleanNumericValue(extracted.productValue)),
-      vat: parseFloat(cleanNumericValue(extracted.vat)),
-      totalAmount: parseFloat(cleanNumericValue(extracted.totalAmount)),
+      productValue: parseFloat(cleanNumericValue(extracted.productValue)) || 0,
+      vat: parseFloat(cleanNumericValue(extracted.vat)) || 0,
+      totalAmount: parseFloat(cleanNumericValue(extracted.totalAmount)) || 0,
       filename: `${file.fileName} (Page ${pageNumber})`,
       imageUrl: '',
       createdDate: new Date(),
       createdBy: 'system',
-      isTemporary: true, 
+      isTemporary: true,
     };
   } catch (error) {
     console.error('Error parsing extracted text:', error);
@@ -167,7 +171,11 @@ const parseExtractedTextToAccounting = (extractedText: string, file: SourceFileD
   }
 };
 
-const extractBasicInfoFromText = (extractedText: string, file: SourceFileData, pageNumber: number): Accounting => {
+const extractBasicInfoFromText = (
+  extractedText: string, 
+  file: SourceFileData, 
+  pageNumber: number
+): Accounting => {
   const text = extractedText || '';
   const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
   
@@ -175,7 +183,7 @@ const extractBasicInfoFromText = (extractedText: string, file: SourceFileData, p
   let invoiceInfo = '';
   let invoiceDate = '';
   
-  // หาชื่อบริษัท/ผู้ขาย
+  // Find company/seller name
   for (const line of lines.slice(0, 15)) {
     if (line.length > 10 && !line.match(/^\d+/) && !line.match(/^(page|หน้า)/i)) {
       if (!sellerName && (
@@ -192,21 +200,22 @@ const extractBasicInfoFromText = (extractedText: string, file: SourceFileData, p
     }
   }
   
-  // หาเลขที่เอกสาร
+  // Find document number
   const docPatterns = [
-    /(?:เลขที่|No\.?|Invoice|INV|เลขที่เอกสาร)[:\s]*([A-Z0-9-]+)/i,
+    /(?:เลขที่|No\.?|Invoice|INV|เลขที่เอกสาร)[:\s]*([A-Z0-9\-\/]+)/i,
     /([A-Z]{2,}\d{4,})/g,
+    /(\d{8,})/g,
   ];
   
   for (const pattern of docPatterns) {
     const match = text.match(pattern);
-    if (match) {
-      invoiceInfo = match[1] || match[0];
+    if (match && match[1] && match[1].length >= 4) {
+      invoiceInfo = match[1];
       break;
     }
   }
   
-  // หาวันที่
+  // Find date
   const datePatterns = [
     /(\d{1,2}\/\d{1,2}\/\d{4})/,
     /(\d{4}-\d{1,2}-\d{1,2})/,
@@ -220,21 +229,11 @@ const extractBasicInfoFromText = (extractedText: string, file: SourceFileData, p
       break;
     }
   }
-  
 
-  if (!sellerName) {
-    const firstMeaningfulLine = lines.find(line => 
-      line.length > 5 && 
-      !line.match(/^\d+$/) && 
-      !line.match(/^(page|หน้า)/i)
-    );
-    sellerName = firstMeaningfulLine ? `${firstMeaningfulLine.slice(0, 50)}...` : 'Unknown';
-  }
-  
   return {
     id: `${file.id}-page-${pageNumber}-basic-${Date.now()}-${Math.random()}`,
     invoiceDate: invoiceDate,
-    invoiceNo: invoiceInfo || `DOC-${pageNumber}`,
+    invoiceNo: invoiceInfo,
     sellerName: sellerName,
     sellerTaxId: '',
     branch: '',
@@ -245,11 +244,11 @@ const extractBasicInfoFromText = (extractedText: string, file: SourceFileData, p
     imageUrl: '',
     createdDate: new Date(),
     createdBy: 'system',
-    isTemporary: true, 
+    isTemporary: true,
   };
 };
 
-const validatePayload = (payload: any): { isValid: boolean; errors: string[] } => {
+const validatePayload = (payload: any): ValidationResult => {
   const errors: string[] = [];
   
   if (!payload.userId) errors.push('Missing userId');
@@ -278,7 +277,7 @@ const validatePayload = (payload: any): { isValid: boolean; errors: string[] } =
   return { isValid: errors.length === 0, errors };
 };
 
-//  Main Component
+// Main Component
 export default function AccountingSummary() {
   const router = useRouter();
   const { data: session } = useSession();
@@ -286,36 +285,36 @@ export default function AccountingSummary() {
   const sourceFiles = useSelector(selectAllAccountingFiles);
   const { toastSuccess, toastError } = useToast();
 
-  // State management
+  // State
   const [data, setData] = useState<Accounting[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editingData, setEditingData] = useState<Accounting | null>(null);
-  const [modals, setModals] = useState({
+  const [modals, setModals] = useState<ModalState>({
     form: false,
     export: false,
     save: false
   });
   const [loading, setLoading] = useState(false);
-  const [saveProgress, setSaveProgress] = useState({ current: 0, total: 0 });
+  const [saveProgress, setSaveProgress] = useState<SaveProgress>({ current: 0, total: 0 });
 
   const userId = session?.user?.userId ?? "admin";
 
+  // Memoized conversion of OCR data to accounting records
   const convertedAccountingData = useMemo(() => {
     if (!sourceFiles.length) return [];
     
-    console.log('Converting OCR data to accounting records (1 page = 1 row)...');
-    console.log('Source files:', sourceFiles.length);
+    console.log('Converting OCR data to accounting records...');
     
     const accountingData: Accounting[] = [];
     
     sourceFiles.forEach((file, fileIndex) => {
-      console.log(`\n Processing file ${fileIndex + 1}: ${file.fileName}`);
-      console.log(`Pages in file: ${file.ocrResult?.length || 0}`);
+      console.log(`Processing file ${fileIndex + 1}: ${file.fileName}`);
       
-      file.ocrResult?.forEach((page, pageIndex) => {
+      file.ocrResult?.forEach((page) => {
         const reportData = (page as any).reportData;
         
         if (reportData) {
+          // Use existing reportData
           const accountingRecord: Accounting = {
             id: `${file.id}-page-${page.page}-${Date.now()}-${Math.random()}`,
             invoiceDate: reportData.invoiceDate || '',
@@ -330,30 +329,28 @@ export default function AccountingSummary() {
             imageUrl: page.blobUrl || '',
             createdDate: new Date(),
             createdBy: 'system',
-            isTemporary: true, 
+            isTemporary: true,
           };
           
           accountingData.push(accountingRecord);
-          console.log(`Page ${page.page}: Found reportData - ${reportData.sellerName}`);
           
         } else if (page.extractedText) {
+          // Try to parse extracted text
           const parsedRecord = parseExtractedTextToAccounting(page.extractedText, file, page.page);
           
           if (parsedRecord) {
             accountingData.push(parsedRecord);
-            console.log(`Page ${page.page}: Parsed data - ${parsedRecord.sellerName}`);
           } else {
             const basicRecord = extractBasicInfoFromText(page.extractedText, file, page.page);
             accountingData.push(basicRecord);
-            console.log(`Page ${page.page}: Basic data only - ${basicRecord.sellerName}`);
           }
         } else {
-
+          // Create empty record
           const emptyRecord: Accounting = {
             id: `${file.id}-page-${page.page}-no-data-${Date.now()}-${Math.random()}`,
-            invoiceDate: new Date().toISOString().split('T')[0], 
-            invoiceNo: `${file.fileName}-P${page.page}`, 
-            sellerName: `No data extracted`,
+            invoiceDate: '',
+            invoiceNo: '',
+            sellerName: '',
             sellerTaxId: '',
             branch: '',
             productValue: 0,
@@ -363,22 +360,25 @@ export default function AccountingSummary() {
             imageUrl: page.blobUrl || '',
             createdDate: new Date(),
             createdBy: 'system',
-            isTemporary: true, 
+            isTemporary: true,
           };
           
           accountingData.push(emptyRecord);
-          console.log(`Page ${page.page}: No data found - created empty record`);
         }
       });
     });
     
-    console.log(`\n Total accounting records created: ${accountingData.length}`);
-    console.log(` Expected records (total pages): ${sourceFiles.reduce((sum, file) => sum + (file.ocrResult?.length || 0), 0)}`);
-    
-
+    console.log(`Total accounting records created: ${accountingData.length}`);
     return sortAccountingData(accountingData);
   }, [sourceFiles]);
 
+  // Data with row numbers
+  const dataWithRowNumbers = useMemo(() => 
+    data.map((item, index) => ({ ...item, no: index + 1 })),
+    [data]
+  );
+
+  // Effects
   useEffect(() => {
     if (convertedAccountingData.length > 0) {
       setLoading(true);
@@ -389,17 +389,12 @@ export default function AccountingSummary() {
     }
   }, [convertedAccountingData, sourceFiles.length]);
 
-
-  const dataWithRowNumbers = useMemo(() => 
-    data.map((item, index) => ({ ...item, no: index + 1 })),
-    [data]
-  );
-
+  // Event Handlers
   const handleBack = useCallback(() => {
     router.push('/accounting');
   }, [router]);
 
-  const handleModalToggle = useCallback((modalName: keyof typeof modals, state?: boolean) => {
+  const handleModalToggle = useCallback((modalName: keyof ModalState, state?: boolean) => {
     setModals(prev => ({
       ...prev,
       [modalName]: state !== undefined ? state : !prev[modalName]
@@ -422,7 +417,7 @@ export default function AccountingSummary() {
 
   const handleSave = useCallback(() => {
     handleModalToggle('save', true);
-  }, [sourceFiles.length, toastError, handleModalToggle]);
+  }, [handleModalToggle]);
 
   const handleExport = useCallback(() => {
     if (data.length === 0) {
@@ -436,14 +431,12 @@ export default function AccountingSummary() {
     try {
       setSaveProgress({ current: 0, total: selectedFiles.length });
       
-
-      console.log('🔄 Syncing edited data back to Redux...');
+      console.log('Syncing edited data back to Redux...');
       const syncedFiles = syncEditedDataToRedux(data, selectedFiles);
       dispatch(updateAccountingFiles(syncedFiles));
       
       let successCount = 0;
       const errors: string[] = [];
-
 
       for (let i = 0; i < syncedFiles.length; i++) {
         const file = syncedFiles[i];
@@ -452,7 +445,6 @@ export default function AccountingSummary() {
         try {
           console.log(`[Save] Processing file: ${file.fileName}`);
           
-
           const pagesWithData = file.ocrResult || [];
 
           if (pagesWithData.length === 0) {
@@ -460,59 +452,43 @@ export default function AccountingSummary() {
             continue;
           }
 
-          console.log(`[Save] Found ${pagesWithData.length} pages in ${file.fileName}`);
-
-
           for (const page of pagesWithData) {
             const reportData = (page as any).reportData;
             
             try {
-
-              const defaultReportData = {
-                invoiceDate: new Date().toISOString().split('T')[0],
-                invoiceNo: `${file.fileName}-P${page.page}`,
-                sellerName: "No data extracted",
-                sellerTaxId: "",
-                branch: "",
-                productValue: "0",
-                vat: "0",
-                totalAmount: "0"
-              };
-
-              const finalReportData = reportData || defaultReportData;
+              // Use actual data or empty values
+              const pageReportData = reportData || EMPTY_ACCOUNTING_RECORD;
 
               const apiPayload = {
                 userId,
-                fileName: `${file.fileName} (Page ${page.page})`,
-                fileType: file.fileType || "",
+                fileName: file.fileName,
                 pageNumber: page.page,
+                fileType: file.fileType || "",
                 pages: [{
                   page: page.page,
                   base64Data: page.base64Data || ""
                 }],
                 reportData: {
-                  invoiceDate: convertDateFormat(finalReportData.invoiceDate || ""), 
-                  invoiceNo: String(finalReportData.invoiceNo || `${file.fileName}-P${page.page}`),
-                  sellerName: String(finalReportData.sellerName || "No data extracted"),
-                  sellerTaxId: String(finalReportData.sellerTaxId || ""),
-                  branch: String(finalReportData.branch || ""),
-                  productValue: cleanNumericValue(finalReportData.productValue || "0"),
-                  vat: cleanNumericValue(finalReportData.vat || "0"),
-                  totalAmount: cleanNumericValue(finalReportData.totalAmount || "0")
+                  invoiceDate: pageReportData.invoiceDate || "", // ✅ ส่งภาษาไทยเข้า DB เลย
+                  invoiceNo: pageReportData.invoiceNo || "",
+                  sellerName: pageReportData.sellerName || "",
+                  sellerTaxId: pageReportData.sellerTaxId || "",
+                  branch: pageReportData.branch || "",
+                  productValue: cleanNumericValue(pageReportData.productValue || "0"),
+                  vat: cleanNumericValue(pageReportData.vat || "0"),
+                  totalAmount: cleanNumericValue(pageReportData.totalAmount || "0")
                 }
               };
-
 
               const validation = validatePayload(apiPayload);
               if (!validation.isValid) {
                 console.warn(`Warning for ${file.fileName} Page ${page.page}: ${validation.errors.join(', ')}`);
- 
               }
 
               await saveAccountingOcr(apiPayload);
               successCount++;
               
-              console.log(`Saved: ${file.fileName} Page ${page.page} - ${finalReportData.sellerName}`);
+              console.log(`Saved: ${file.fileName} Page ${page.page}`);
               
               await new Promise(resolve => setTimeout(resolve, 100));
               
@@ -527,7 +503,6 @@ export default function AccountingSummary() {
           errors.push(`Failed to process: ${file.fileName}`);
         }
       }
-
 
       if (successCount > 0) {
         toastSuccess(`Successfully saved ${successCount} invoice records!`);
@@ -564,12 +539,11 @@ export default function AccountingSummary() {
     try {
       setLoading(true);
       
-
       setData(prev => {
         const updated = prev.map(item => 
           item.id === updatedData.id ? { ...item, ...updatedData } : item
         );
-        return sortAccountingData(updated); 
+        return sortAccountingData(updated);
       });
       
       toastSuccess('Data updated successfully! (Note: Please use "Save" button to save to database)');
@@ -582,6 +556,7 @@ export default function AccountingSummary() {
     }
   }, [toastSuccess, toastError]);
 
+  // Render Methods
   const renderContent = () => {
     if (loading) {
       return (
@@ -676,7 +651,6 @@ export default function AccountingSummary() {
           )}
         </h3>
         
-        {/* Data Table */}
         {renderContent()}
       </div>
 
