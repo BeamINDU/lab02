@@ -81,6 +81,7 @@ const sortAccountingData = (data: Accounting[]): Accounting[] => {
     const fileA = extractFileAndPage(a.filename);
     const fileB = extractFileAndPage(b.filename);
 
+    // ✅ ใช้ localeCompare กับ numeric option สำหรับ natural sort
     const fileNameComparison = fileA.fileName.localeCompare(fileB.fileName, undefined, {
       numeric: true,
       caseFirst: 'upper'
@@ -90,6 +91,7 @@ const sortAccountingData = (data: Accounting[]): Accounting[] => {
       return fileNameComparison;
     }
 
+    // เรียงตาม pageNumber แบบ numeric
     return fileA.pageNumber - fileB.pageNumber;
   });
 };
